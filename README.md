@@ -24,7 +24,7 @@ Users create **"Rhythms"**—smart automated pools that execute buys only when s
 
 ## 📺 Build in Public
 This project git is being built from scratch and documented entirely in public. 
-Follow the development journey, architectural decisions, and behind-the-scenes vlogs on my YouTube channel: **[strangers on a chain](https://www.youtube.com/)**
+Follow the development journey, architectural decisions, and behind-the-scenes vlogs on my YouTube channel: **[strangers on a chain](https://www.youtube.com/@strangersonachain)**
 
 ---
 *Built with discipline for the Colosseum Hackathon.*
