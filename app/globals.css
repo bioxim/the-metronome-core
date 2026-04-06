@@ -1,0 +1,22 @@
+@import "tailwindcss";
+
+@theme {
+  /* Fondos */
+  --color-bgMain: #1d1e1d;
+  --color-bgSecondary: #172039;
+
+  /* Marca y Acentos */
+  --color-brandPrimary: #1fc0e2;
+  --color-brandPurple: #664aa4;
+  --color-brandBlue: #4483c4;
+  --color-brandLightblue: #389dce;
+  --color-brandMutedPurple: #625196;
+  --color-brandPeriwinkle: #536ab4;
+}
+
+body {
+  background-color: var(--color-bgMain);
+  color: #ededed;
+  /* Tu gris claro para los textos */
+  font-family: 'Inter', sans-serif;
+}
