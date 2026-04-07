@@ -15,7 +15,7 @@ export default function Navbar() {
           VERSIÓN ESCRITORIO (Oculta en celulares)
           ========================================= */}
             <nav className="hidden lg:flex items-center gap-6 text-sm font-semibold text-[--text-main]">
-                <Link href="/create" className="hover:text-brandPrimary transition-colors">
+                <Link href="/" className="hover:text-brandPrimary transition-colors">
                     Create Rhythm
                 </Link>
                 <Link href="/dashboard" className="hover:text-brandPrimary transition-colors">
@@ -63,7 +63,7 @@ export default function Navbar() {
           ========================================= */}
             {isOpen && (
                 <div className="absolute top-[90px] left-0 w-full bg-bgSecondary border-b border-white/10 flex flex-col items-center py-8 gap-6 lg:hidden z-50 shadow-2xl">
-                    <Link href="/create" onClick={() => setIsOpen(false)} className="text-lg hover:text-brandPrimary transition-colors">Create Rhythm</Link>
+                    <Link href="/" onClick={() => setIsOpen(false)} className="text-lg hover:text-brandPrimary transition-colors">Create Rhythm</Link>
                     <Link href="/dashboard" onClick={() => setIsOpen(false)} className="text-lg hover:text-brandPrimary transition-colors">Dashboard</Link>
                     <Link href="/leaderboard" onClick={() => setIsOpen(false)} className="text-lg hover:text-brandPrimary transition-colors">Leaderboard</Link>
                     <Link href="/rewards" onClick={() => setIsOpen(false)} className="text-lg hover:text-brandPrimary transition-colors">Rewards</Link>
