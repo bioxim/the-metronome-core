@@ -1,15 +1,29 @@
 import Header from "@/components/Header";
+import RhythmPanel from "@/components/RhythmPanel";
 
 export default function Home() {
   return (
-    <main className="min-h-screen p-6 md:p-12 flex flex-col items-center">
+    <main className="min-h-screen flex flex-col items-center">
 
-      {/* Acá llamamos al componente modularizado */}
+      {/* El Header ya incluye la Navbar adentro */}
       <Header />
 
-      {/* Acá en el medio es donde vamos a construir la tarjeta de "Create a Rhythm" */}
-      <div className="w-full max-w-5xl text-center text-textMuted mt-10">
-        <p>El taller está limpio, modularizado y listo para construir...</p>
+      {/* Contenedor Principal (Grid de 3 columnas en desktop) */}
+      <div className="w-full max-w-7xl px-4 xl:px-0 grid grid-cols-1 lg:grid-cols-3 gap-8 pb-12">
+
+        {/* LADO IZQUIERDO: El Gráfico (Ocupa 2 de las 3 columnas) */}
+        <div className="lg:col-span-2 bg-bgSecondary border border-white/10 rounded-xl p-6 min-h-[500px] flex flex-col items-center justify-center shadow-xl">
+          <span className="text-5xl mb-4">📈</span>
+          <p className="text-textMuted font-mono">
+            [ Espacio reservado para el Chart interactivo ]
+          </p>
+        </div>
+
+        {/* LADO DERECHO: El Panel de Control (Ocupa 1 columna) */}
+        <div className="lg:col-span-1">
+          <RhythmPanel />
+        </div>
+
       </div>
 
     </main>
