@@ -1,14 +1,11 @@
 "use client";
 
-import Header from "@/components/Header";
-
 import Link from 'next/link';
 import { Bot, Calculator, ArrowLeftRight, PiggyBank, Sparkles, ArrowRight } from 'lucide-react';
 
 export default function ToolsShowcasePage() {
     return (
         <div className="min-h-screen bg-bgMain text-textMain pb-20">
-            <Header />
             {/* Hero Section */}
             <div className="max-w-7xl mx-auto px-4 xl:px-0 pt-10 pb-16 text-center">
                 <div className="inline-flex items-center gap-2 bg-brandPrimary/10 border border-brandPrimary/20 text-brandPrimary px-4 py-1.5 rounded-full text-sm font-bold mb-6">

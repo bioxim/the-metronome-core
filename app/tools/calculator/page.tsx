@@ -1,6 +1,5 @@
 "use client";
 
-import Header from '@/components/Header';
 import { useState } from 'react';
 import { Calculator, TrendingUp, AlertCircle, ArrowLeft, Activity, Target } from 'lucide-react';
 import Link from 'next/link';
@@ -40,7 +39,6 @@ export default function CalculatorPage() {
 
     return (
         <div className="min-h-screen bg-bgMain text-textMain pb-10 pt-12">
-            <Header />
             <div className="max-w-4xl mx-auto px-4 xl:px-0">
 
                 <Link href="/tools" className="inline-flex items-center gap-2 text-textMuted hover:text-white transition-colors mb-8">
@@ -71,8 +69,8 @@ export default function CalculatorPage() {
                                             key={v}
                                             onClick={() => setVolatility(v as any)}
                                             className={`py-2 rounded-lg text-sm font-bold capitalize transition-colors ${volatility === v
-                                                    ? 'bg-[#8b5cf6] text-white'
-                                                    : 'bg-bgMain border border-white/10 text-textMuted hover:border-[#8b5cf6]/50'
+                                                ? 'bg-[#8b5cf6] text-white'
+                                                : 'bg-bgMain border border-white/10 text-textMuted hover:border-[#8b5cf6]/50'
                                                 }`}
                                         >
                                             {v}

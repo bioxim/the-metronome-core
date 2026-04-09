@@ -1,6 +1,5 @@
 "use client";
 
-import Header from "@/components/Header";
 import { useState } from 'react';
 import { Bot, Send, ArrowLeft } from 'lucide-react';
 import Link from 'next/link';
@@ -28,7 +27,6 @@ export default function OraclePage() {
 
     return (
         <div className="min-h-screen bg-bgMain text-textMain pb-10 pt-12">
-            <Header />
             <div className="max-w-3xl mx-auto px-4 xl:px-0">
 
                 <Link href="/tools" className="inline-flex items-center gap-2 text-textMuted hover:text-white transition-colors mb-8">
@@ -52,8 +50,8 @@ export default function OraclePage() {
                         {messages.map((msg, idx) => (
                             <div key={idx} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
                                 <div className={`max-w-[85%] p-4 rounded-2xl text-base leading-relaxed ${msg.role === 'user'
-                                        ? 'bg-brandPrimary text-bgMain font-medium rounded-br-none'
-                                        : 'bg-white/5 border border-white/10 text-textMuted rounded-bl-none'
+                                    ? 'bg-brandPrimary text-bgMain font-medium rounded-br-none'
+                                    : 'bg-white/5 border border-white/10 text-textMuted rounded-bl-none'
                                     }`}>
                                     {msg.text}
                                 </div>

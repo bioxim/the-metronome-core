@@ -1,11 +1,6 @@
-import Header from "@/components/Header";
-
 export default function PageTemplate() {
     return (
         <main className="min-h-screen flex flex-col items-center">
-
-            {/* El Header nos acompaña a todas las páginas */}
-            <Header />
 
             {/* Contenedor Principal de la solapa */}
             <div className="w-full max-w-7xl px-4 xl:px-0 flex flex-col items-center justify-center mt-12">

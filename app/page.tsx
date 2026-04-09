@@ -1,12 +1,8 @@
-import Header from "@/components/Header";
 import RhythmPanel from "@/components/RhythmPanel";
 
 export default function Home() {
   return (
     <main className="min-h-screen flex flex-col items-center">
-
-      {/* El Header ya incluye la Navbar adentro */}
-      <Header />
 
       {/* Contenedor Principal (Grid de 3 columnas en desktop) */}
       <div className="w-full max-w-7xl px-4 xl:px-0 grid grid-cols-1 lg:grid-cols-3 gap-8 pb-12">

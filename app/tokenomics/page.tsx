@@ -1,11 +1,10 @@
 "use client";
-import Header from "@/components/Header";
+
 import { Flame, Users, ShieldCheck, ArrowRightLeft, Coins } from 'lucide-react';
 
 export default function TokenomicsPage() {
     return (
         <div className="min-h-screen bg-bgMain text-textMain pb-20">
-            <Header />
             {/* Header Section */}
             <div className="max-w-7xl mx-auto px-4 xl:px-0 pt-10 pb-12">
                 <div className="inline-block bg-brandPrimary/10 border border-brandPrimary/20 text-brandPrimary px-4 py-1.5 rounded-full text-sm font-bold mb-6">

@@ -1,8 +1,12 @@
+"use client";
+
 import Navbar from './Navbar';
+import { WalletMultiButton } from '@solana/wallet-adapter-react-ui';
 
 export default function Header() {
     return (
-        <header className="w-full max-w-7xl flex justify-between items-center mb-16 border-b border-white/10 pb-6 px-4 xl:px-0">
+        <header className="w-full max-w-7xl mx-auto mt-6 flex justify-between items-center mb-16 border-b border-white/10 pb-6 px-4 xl:px-0">
+            {/* mx-auto para centrar, mt-6 para despegar del techo */}
 
             {/* SECCIÓN 1: El Logo (Responsive) */}
             <div className="flex items-center cursor-pointer shrink-0">
@@ -24,17 +28,10 @@ export default function Header() {
             {/* SECCIÓN 2: Navbar Modularizada */}
             <Navbar />
 
-            {/* SECCIÓN 3: El Botón de Wallet (Gris, hover blanco y cursor de manito) */}
-            <button className="flex items-center shrink-0 gap-3 bg-bgSecondary border border-white/10 text-white font-bold py-2 px-5 rounded-lg hover:bg-white hover:text-bgMain transition-all duration-200 cursor-pointer">
-                {/* El ícono adentro del botón */}
-                <img
-                    src="/favicon.png"
-                    alt="Wallet Icon"
-                    className="h-5 w-5 rounded-sm"
-                />
-                <span className="hidden sm:inline">Connect Wallet</span>
-                <span className="sm:hidden">Connect</span>
-            </button>
+            {/* SECCIÓN 3: El Botón de Wallet Oficial de Solana */}
+            <div className="flex items-center shrink-0">
+                <WalletMultiButton className="!bg-brandPrimary hover:!bg-[#0891b2] !text-bgMain !rounded-lg !font-extrabold transition-colors !h-10 px-5" />
+            </div>
 
         </header>
     );
