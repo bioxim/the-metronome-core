@@ -1,30 +1,45 @@
-# The Metronome ⏱️🐻
-**Smart Spot Grid & Auto-Staking for the Disciplined Investor**
+# ⏱️ The Metronome
+Automate your accumulation. Earn yield. Stay disciplined.
+Built for the Colosseum Hackathon (Solana).
 
-> *Crypto is not a casino. It's about tech, strategy, and discipline.* The Metronome is a survival terminal built for the Colosseum Hackathon on the Solana ecosystem. It is designed to intelligently automate crypto micro-purchases (Spot Grid), generate immediate yield (Auto-Staking), and financially reward user consistency through a unique penalty-backed tokenomic model.
+## 📖 Vision
+The era of pure speculation is over. Sustainable Web3 portfolios require discipline, not emotion. The Metronome is a decentralized, algorithmic Dollar Cost Averaging (DCA) protocol on Solana. It allows users to set price-based execution rhythms to automatically buy the dips and take profit on the pumps, removing human psychology from the equation.
 
-## 🚀 The Vision
+## 🛠️ The Problem
+Retail investors and DAO treasuries constantly lose value due to market volatility and emotional trading (paper-handing). Existing DCA tools are time-based (e.g., "Buy $10 every Tuesday"), completely ignoring on-chain market conditions and price action.
 
-Most DeFi interfaces are built for degenerate trading and leveraged perps, leading to massive retail losses. The Metronome changes the paradigm by offering a highly customizable, automated "set-and-forget" strategy for long-term accumulation. 
+## 💡 The Solution (Core Loop)
+The Metronome replaces time with Price Rhythms.
 
-Users create **"Rhythms"**—smart automated pools that execute buys only when specific market conditions are met, abstracting away the stress of manual monitoring.
+**Buy Rhythm:** Execute purchases only when the asset drops a specific percentage.
 
-## ✨ Key Features
+**Sell Rhythm (Take Profit):** Automatically sell a portion when the asset pumps.
 
-- **Smart Spot Grid (Rhythms):** Fund your vault with stablecoins (e.g., USDC) and set precise percentage drops to trigger micro-purchases.
-- **Immediate Auto-Staking:** Acquired assets don't just sit there. They are instantly routed to Liquid Staking protocols (e.g., JitoSOL) to generate compound interest while you wait for your take-profit target.
-- **The "Paper-Hands" Penalty:** Closing a Rhythm prematurely or at a loss incurs a small penalty. This fee goes into a Vault that funds a real, on-chain airdrop for disciplined users. No fake points, real yield.
-- **Gas Abstraction (Keeper Fees):** Automation is powered by micro-commissions taken directly from the vault, ensuring a seamless user experience without needing extra SOL for gas.
+**Capital Efficiency:** Idle funds waiting for a trigger are routed to lending pools to earn base yield.
 
-## 🛠️ Tech Stack (In Progress)
-- **Blockchain:** Solana (with future scalability considerations for Base)
-- **Smart Contracts:** Rust & Anchor Framework
-- **Frontend:** Next.js, Tailwind CSS
-- **Integration:** `@solana/web3.js`, Jupiter API (for routing/swaps)
+## ⚖️ Tokenomics & Architecture ($ONOME)
+Engineered for sustainable yield and protocol defense.
 
-## 📺 Build in Public
-This project git is being built from scratch and documented entirely in public. 
-Follow the development journey, architectural decisions, and behind-the-scenes vlogs on my YouTube channel: **[strangers on a chain](https://www.youtube.com/@strangersonachain)**
+**Total Supply:** 1,000,000,000 $ONOME
 
----
-*Built with discipline for the Colosseum Hackathon.*
+**Distribution:** Community & Rewards (42.7%), Investors (34.9%), Core Team (12.4%), Treasury (10.0%).
+
+**Zero-Fee Execution:** Stakers of $ONOME enjoy 0% protocol fees on their DCA rhythms.
+
+**The Paper-Hand Penalty:** Withdrawing a position before it reaches profitability incurs an early-exit fee. 100% of this penalty is redistributed to $ONOME stakers.
+
+**Deflationary Buyback:** Standard platform fees from non-stakers are used to buy and burn $ONOME on the open market.
+
+## 💻 Technical Implementation
+**Frontend:** Next.js 14, Tailwind CSS, Lucide Icons.
+
+**Web3 Integration:** @solana/wallet-adapter-react, @solana/web3.js.
+
+**Pro Tools:** Includes an algorithmic yield simulator (Rhythm Calculator) and an AI Oracle interface for market volatility analysis.
+
+## 🚀 Future Roadmap (Phase 2)
+Integration with Jupiter for zero-slippage execution.
+
+Kamino Finance integration for idle capital lending.
+
+Smart mobile alerts for executed rhythms.
