@@ -1,0 +1,24 @@
+use anchor_lang::prelude::*;
+
+#[account]
+pub struct RhythmVault {
+    // 1. Identificación
+    pub owner: Pubkey,             // La billetera del usuario (Phantom/Solflare)
+    pub token_in: Pubkey,          // Moneda que deposita (Ej: USDC)
+    pub token_out: Pubkey,         // Moneda que acumula (Ej: SOL / JitoSOL)
+    
+    // 2. El Presupuesto
+    pub total_budget: u64,         // Presupuesto total inicial (Ej: 100 USDC)
+    pub remaining_budget: u64,     // Cuánto USDC queda disponible para comprar
+    pub accumulated_asset: u64,    // Cuánto SOL/JitoSOL ya se fue comprando
+    
+    // 3. La Estrategia (El Ritmo)
+    pub buy_drop_percent: u16,     // Gatillo de compra (Ej: 150 = 1.5% de caída)
+    pub buy_amount: u64,           // Cuánto gastar por caída (Ej: 20 USDC)
+    pub sell_profit_percent: u16,  // Gatillo de salida (Ej: 1500 = 15% de ganancia)
+    
+    // 4. Comisiones y Estado
+    pub keeper_fee_locked: u64,    // Los 0.05 SOL bloqueados para pagarle a los bots
+    pub is_active: bool,           // ¿Está encendido o el usuario apretó el botón de pánico?
+    pub bump: u8,                  // Un número de seguridad interno de Solana
+}
