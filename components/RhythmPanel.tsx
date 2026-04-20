@@ -2,6 +2,9 @@
 
 import { useState } from "react";
 import { Equal, TrendingUp, ShieldCheck, AlertCircle } from "lucide-react";
+import { useConnection, useWallet } from '@solana/wallet-adapter-react';
+// Asegurate de que la ruta a utils/anchor sea correcta según tus carpetas
+import { getProvider, getProgram } from '../utils/anchor';
 
 export default function RhythmPanel() {
     // 1. Estados
@@ -11,6 +14,8 @@ export default function RhythmPanel() {
     const [buyAmount, setBuyAmount] = useState<number>(20);
     const [crescendoIncrease, setCrescendoIncrease] = useState<number>(2);
     const [takeProfitPercent, setTakeProfitPercent] = useState<number>(15.0);
+    const { connection } = useConnection();
+    const wallet = useWallet();
 
     // 2. Validaciones de Seguridad
     const isBudgetError = buyAmount > totalBudget;
@@ -35,15 +40,33 @@ export default function RhythmPanel() {
     }
 
     // 4. El Disparador
-    const handleStartMetronome = () => {
+    const handleStartMetronome = async () => {
         if (isBudgetError) return;
 
-        console.log("🚀 Starting Rhythm with:", {
-            mode, totalBudget, buyDropPercent, buyAmount,
-            crescendoIncrease: mode === 'crescendo' ? crescendoIncrease : 0,
-            takeProfitPercent,
-        });
-        alert(`Rhythm ready! Projected rewards: +${projectedOnomeRewards} $ONOME`);
+        // Chequeamos que el usuario tenga su Phantom conectada
+        if (!wallet.connected || !wallet.publicKey) {
+            alert("¡Oso advierte: Conectá tu billetera en la Navbar primero! 🐻");
+            return;
+        }
+
+        try {
+            // Encendemos el motor
+            const provider = getProvider(wallet, connection);
+            const program = getProgram(provider);
+
+            console.log("¡La Matrix está conectada! 🐻🔌", program);
+            console.log("Datos listos para enviar a Solana:", {
+                mode, totalBudget, buyDropPercent, buyAmount,
+                crescendoIncrease: mode === 'crescendo' ? crescendoIncrease : 0,
+                takeProfitPercent
+            });
+
+            alert(`¡Traductor inicializado con éxito! Revisá tu consola con F12.\nProyectado: +${projectedOnomeRewards} $ONOME`);
+
+        } catch (error) {
+            console.error("Error al conectar con el contrato:", error);
+            alert("Hubo un error al iniciar el traductor. Revisá la consola.");
+        }
     };
 
     return (
@@ -176,8 +199,8 @@ export default function RhythmPanel() {
                     onClick={handleStartMetronome}
                     disabled={isBudgetError}
                     className={`w-full font-extrabold py-4 px-6 rounded-lg transition-all transform ${isBudgetError
-                            ? 'bg-white/5 text-textMuted cursor-not-allowed'
-                            : 'bg-brandPrimary text-bgMain hover:bg-white hover:scale-[1.02] shadow-lg shadow-brandPrimary/20'
+                        ? 'bg-white/5 text-textMuted cursor-not-allowed'
+                        : 'bg-brandPrimary text-bgMain hover:bg-white hover:scale-[1.02] shadow-lg shadow-brandPrimary/20'
                         }`}
                 >
                     {isBudgetError ? 'INVALID CONFIGURATION' : 'START METRONOME'}
