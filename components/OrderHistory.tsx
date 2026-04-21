@@ -1,7 +1,9 @@
 "use client";
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { CheckCircle2, Wallet, Activity, ArrowUpRight, AlertTriangle, Coins, Hash, ListOrdered } from 'lucide-react';
+import { useAnchorWallet, useConnection } from '@solana/wallet-adapter-react';
+import { getProvider, getProgram } from '../utils/anchor';
 
 export default function OrderHistory() {
     // 1. MOCK DATA: Tenencias
@@ -12,38 +14,64 @@ export default function OrderHistory() {
     ];
 
     // 2. MOCK DATA: Múltiples Posiciones Activas con DESGLOSE DE ÓRDENES
-    const activePositions = [
-        {
-            id: '8fA2bC99',
-            pair: 'SOL/USDC',
-            deposited: '100 USDC',
-            progress: 65,
-            bought: '0.425 SOL',
-            pnl: '+4.2%',
-            pnlColor: 'text-green-400',
-            // NUEVO: Historial de compras para esta posición específica
-            orders: [
-                { id: 1, invested: '20.00', bought: '0.137', price: '$145.20', date: 'Apr 03', currentValue: '$21.50', isProfit: true },
-                { id: 2, invested: '20.00', bought: '0.140', price: '$142.10', date: 'Apr 04', currentValue: '$21.95', isProfit: true },
-                { id: 3, invested: '20.00', bought: '0.148', price: '$135.00', date: 'Apr 05', currentValue: '$23.20', isProfit: true },
-            ]
-        },
-        {
-            id: '3xP9mQ12',
-            pair: 'BTC/USDC',
-            deposited: '500 USDC',
-            progress: 20,
-            bought: '0.0014 BTC',
-            pnl: '-1.1%',
-            pnlColor: 'text-red-400',
-            orders: [
-                { id: 1, invested: '100.00', bought: '0.0014', price: '$71,200', date: 'Apr 06', currentValue: '$98.90', isProfit: false },
-            ]
-        }
-    ];
+    // Herramientas de conexión
+    const wallet = useAnchorWallet();
+    const { connection } = useConnection();
 
-    const [selectedPositionId, setSelectedPositionId] = useState(activePositions[0].id);
-    const currentPos = activePositions.find(p => p.id === selectedPositionId);
+    // Acá guardaremos las bóvedas reales que encontremos
+    const [realPositions, setRealPositions] = useState<any[]>([]);
+    const [selectedPositionId, setSelectedPositionId] = useState<string | null>(null);
+
+    // Esta es la función exploradora que busca en tu Matrix
+    useEffect(() => {
+        const fetchMyRhythms = async () => {
+            if (!wallet) return;
+
+            try {
+                const provider = getProvider(wallet, connection);
+                const program = getProgram(provider);
+
+                // Filtramos todas las bóvedas para traer solo las tuyas
+                const myRhythms = await (program.account as any).rhythm.all([
+                    {
+                        memcmp: {
+                            offset: 8, // Saltamos los 8 bytes de seguridad
+                            bytes: wallet.publicKey.toBase58(),
+                        }
+                    }
+                ]);
+
+                console.log("¡Bóvedas encontradas! 🐻🔍", myRhythms);
+
+                // Convertimos los datos crudos de Solana a un formato bonito para tu diseño
+                const formattedPositions = myRhythms.map((rhythm: any) => ({
+                    id: rhythm.publicKey.toString(), // La dirección de la bóveda
+                    pair: 'SOL/USDC', // Por ahora lo dejamos fijo
+                    deposited: `${rhythm.account.depositAmount.toString()} USDC`, // Tu depósito real
+                    buyDrop: `${rhythm.account.buyDropPercentage.toString()}%`, // Tu regla de caída
+                    sellPump: `${rhythm.account.sellPumpPercentage.toString()}%`, // Tu regla de subida
+                    progress: 0, // Aún no hay progreso real
+                    pnl: '0.0%',
+                    pnlColor: 'text-gray-400',
+                    orders: [] // Aún no hay órdenes reales ejecutadas
+                }));
+
+                setRealPositions(formattedPositions);
+
+                // Seleccionamos la primera por defecto si encontramos alguna
+                if (formattedPositions.length > 0) {
+                    setSelectedPositionId(formattedPositions[0].id);
+                }
+
+            } catch (error) {
+                console.error("Error buscando las bóvedas:", error);
+            }
+        };
+
+        fetchMyRhythms();
+    }, [wallet, connection]);
+
+    const currentPos = realPositions.find(p => p.id === selectedPositionId);
 
     // 3. MOCK DATA: Historial General
     const history = [
@@ -104,13 +132,13 @@ export default function OrderHistory() {
 
                     {/* SOLAPAS */}
                     <div className="flex gap-2 p-4 border-b border-white/5 overflow-x-auto bg-bgMain/30">
-                        {activePositions.map(pos => (
+                        {realPositions.map(pos => (
                             <button
                                 key={pos.id}
                                 onClick={() => setSelectedPositionId(pos.id)}
                                 className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold transition-all whitespace-nowrap border ${selectedPositionId === pos.id
-                                        ? 'bg-brandPrimary text-bgMain border-brandPrimary shadow-lg shadow-brandPrimary/20'
-                                        : 'bg-white/5 text-textMuted border-white/5 hover:bg-white/10 hover:text-white'
+                                    ? 'bg-brandPrimary text-bgMain border-brandPrimary shadow-lg shadow-brandPrimary/20'
+                                    : 'bg-white/5 text-textMuted border-white/5 hover:bg-white/10 hover:text-white'
                                     }`}
                             >
                                 <span>{pos.pair}</span>
@@ -175,7 +203,7 @@ export default function OrderHistory() {
                                                 </tr>
                                             </thead>
                                             <tbody className="divide-y divide-white/5">
-                                                {currentPos.orders.map(order => (
+                                                {currentPos.orders.map((order: any) => (
                                                     <tr key={order.id} className="hover:bg-white/5 transition-colors">
                                                         <td className="px-4 py-2.5 text-textMuted font-mono">{order.id}</td>
                                                         <td className="px-4 py-2.5 text-white font-mono">{order.invested} <span className="text-[9px] text-textMuted">USDC</span></td>

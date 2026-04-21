@@ -7,7 +7,7 @@ resolution = true
 skip-lint = false
 
 [programs.localnet]
-metronome = "EADt5m5ur3ur8YNKWdX2FRsF8UkTzPzW7tiNMFiqjued"
+metronome = "EiysWuzqfv7eg7YBiBos7pKYEDQjLCyKvYnjPnD8GiLU"
 
 [provider]
 cluster = "localnet"

@@ -14,7 +14,7 @@ interface Props {
 
 export const WalletContextProvider: FC<Props> = ({ children }) => {
     // Usamos la 'devnet' para pruebas. Para producción se cambia a 'mainnet-beta'
-    const network = clusterApiUrl('devnet');
+    const network = "http://127.0.0.1:8899";
 
     // ¡Acá está la magia moderna! 
     // Dejamos esto vacío porque Phantom y Solflare se detectan solas con el nuevo estándar.

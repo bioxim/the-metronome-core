@@ -1,7 +1,7 @@
 #![allow(deprecated)]
 use anchor_lang::prelude::*;
 
-declare_id!("EADt5m5ur3ur8YNKWdX2FRsF8UkTzPzW7tiNMFiqjued");
+declare_id!("EiysWuzqfv7eg7YBiBos7pKYEDQjLCyKvYnjPnD8GiLU");
 
 #[program]
 pub mod metronome {

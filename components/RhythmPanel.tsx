@@ -5,6 +5,7 @@ import { Equal, TrendingUp, ShieldCheck, AlertCircle } from "lucide-react";
 import { useConnection, useWallet } from '@solana/wallet-adapter-react';
 // Asegurate de que la ruta a utils/anchor sea correcta según tus carpetas
 import { getProvider, getProgram } from '../utils/anchor';
+import { BN, web3 } from '@coral-xyz/anchor';
 
 export default function RhythmPanel() {
     // 1. Estados
@@ -39,7 +40,7 @@ export default function RhythmPanel() {
         }
     }
 
-    // 4. El Disparador
+    // 4. El Disparador Web3 Final
     const handleStartMetronome = async () => {
         if (isBudgetError) return;
 
@@ -50,21 +51,35 @@ export default function RhythmPanel() {
         }
 
         try {
-            // Encendemos el motor
             const provider = getProvider(wallet, connection);
             const program = getProgram(provider);
 
-            console.log("¡La Matrix está conectada! 🐻🔌", program);
-            console.log("Datos listos para enviar a Solana:", {
-                mode, totalBudget, buyDropPercent, buyAmount,
-                crescendoIncrease: mode === 'crescendo' ? crescendoIncrease : 0,
-                takeProfitPercent
-            });
+            // 1. Generamos el "DNI" para la nueva bóveda que va a guardar estos datos
+            const rhythmAccount = web3.Keypair.generate();
 
-            alert(`¡Traductor inicializado con éxito! Revisá tu consola con F12.\nProyectado: +${projectedOnomeRewards} $ONOME`);
+            // 2. Adaptamos los datos: Rust usa números especiales (BN) y no acepta decimales en u8
+            const budgetBN = new BN(totalBudget);
+            const drop = Math.round(buyDropPercent);
+            const pump = Math.round(takeProfitPercent);
+
+            console.log("Despertando a Phantom... 🦊");
+
+            // 3. ¡EL DISPARO! Llamamos a la función de Rust
+            const tx = await program.methods
+                .initializeRhythm(budgetBN, drop, pump)
+                .accounts({
+                    rhythmAccount: rhythmAccount.publicKey,
+                    user: wallet.publicKey,
+                    systemProgram: web3.SystemProgram.programId,
+                })
+                .signers([rhythmAccount]) // Firmamos la creación de la bóveda
+                .rpc(); // ¡rpc() es el gatillo que abre Phantom!
+
+            console.log("¡Bóveda creada con éxito! 🚀 Firma:", tx);
+            alert(`¡Magia pura! Transacción confirmada en la Matrix.\nTu ID de operación es: ${tx}`);
 
         } catch (error) {
-            console.error("Error al conectar con el contrato:", error);
+            console.error("Error al conectar con la Matrix:", error);
             alert("Hubo un error al iniciar el traductor. Revisá la consola.");
         }
     };
