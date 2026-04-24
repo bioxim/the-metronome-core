@@ -7,6 +7,12 @@ import { useConnection, useWallet } from '@solana/wallet-adapter-react';
 import { getProvider, getProgram } from '../utils/anchor';
 import { BN, web3 } from '@coral-xyz/anchor';
 
+import { PublicKey, Transaction } from '@solana/web3.js';
+import { TOKEN_PROGRAM_ID, getAssociatedTokenAddress, createAssociatedTokenAccountIdempotentInstruction } from '@solana/spl-token';
+
+// EL ID DE TU DÓLAR FALSO
+const USDC_MINT = new PublicKey("H3eqFvS6VSWhBUXSiYGZqv29vEiU3SBF5Lry1F5VEv5m");
+
 export default function RhythmPanel() {
     // 1. Estados
     const [mode, setMode] = useState<'fixed' | 'crescendo'>('fixed');
@@ -42,45 +48,69 @@ export default function RhythmPanel() {
 
     // 4. El Disparador Web3 Final
     const handleStartMetronome = async () => {
-        if (isBudgetError) return;
-
-        // Chequeamos que el usuario tenga su Phantom conectada
-        if (!wallet.connected || !wallet.publicKey) {
-            alert("¡Oso advierte: Conectá tu billetera en la Navbar primero! 🐻");
-            return;
-        }
+        if (!wallet.connected || !wallet.publicKey) return;
 
         try {
             const provider = getProvider(wallet, connection);
             const program = getProgram(provider);
 
-            // 1. Generamos el "DNI" para la nueva bóveda que va a guardar estos datos
-            const rhythmAccount = web3.Keypair.generate();
+            console.log("Calculando rutas de dinero... 🗺️");
 
-            // 2. Adaptamos los datos: Rust usa números especiales (BN) y no acepta decimales en u8
-            const budgetBN = new BN(totalBudget);
-            const drop = Math.round(buyDropPercent);
-            const pump = Math.round(takeProfitPercent);
+            // 🌟 NUEVO: Creamos un ID único usando la hora actual
+            const rhythmId = new BN(Date.now());
 
-            console.log("Despertando a Phantom... 🦊");
+            // 1. Encontrar la dirección de tu bóveda usando la nueva fórmula
+            const [rhythmPDA] = PublicKey.findProgramAddressSync(
+                [
+                    Buffer.from("rhythm"),
+                    wallet.publicKey.toBuffer(),
+                    rhythmId.toArrayLike(Buffer, 'le', 8) // Le sumamos el ID a la fórmula
+                ],
+                program.programId
+            );
 
-            // 3. ¡EL DISPARO! Llamamos a la función de Rust
-            const tx = await program.methods
-                .initializeRhythm(budgetBN, drop, pump)
+            const userTokenAccount = await getAssociatedTokenAddress(USDC_MINT, wallet.publicKey);
+            const vaultTokenAccount = await getAssociatedTokenAddress(USDC_MINT, rhythmPDA, true);
+
+            const transaction = new Transaction();
+
+            // Paso A: Crear la "caja fuerte" física en la bóveda (solo la crea si no existe)
+            transaction.add(
+                createAssociatedTokenAccountIdempotentInstruction(
+                    wallet.publicKey, // Vos pagás el sellado
+                    vaultTokenAccount, // La cuenta nueva a crear
+                    rhythmPDA, // El dueño absoluto es la bóveda
+                    USDC_MINT // El tipo de billete (Nuestro USDC falso)
+                )
+            );
+
+            // Paso B: La instrucción de tu contrato en Rust con las variables correctas
+            const initInstruction = await program.methods.initializeRhythm(
+                rhythmId, // 👈 ACÁ ESTABA EL PROBLEMA, FALTABA PASARLE EL ID
+                new BN(totalBudget),
+                Math.floor(buyDropPercent),
+                Math.floor(takeProfitPercent)
+            )
                 .accounts({
-                    rhythmAccount: rhythmAccount.publicKey,
+                    rhythmAccount: rhythmPDA,
                     user: wallet.publicKey,
-                    systemProgram: web3.SystemProgram.programId,
+                    userTokenAccount: userTokenAccount, // De dónde sale la plata
+                    vaultTokenAccount: vaultTokenAccount, // A dónde entra la plata
+                    tokenProgram: TOKEN_PROGRAM_ID, // El Banco
+                    systemProgram: web3.SystemProgram.programId, // Usamos web3 directamente
                 })
-                .signers([rhythmAccount]) // Firmamos la creación de la bóveda
-                .rpc(); // ¡rpc() es el gatillo que abre Phantom!
+                .instruction(); // Armamos el paquete, pero no lo mandamos todavía
 
-            console.log("¡Bóveda creada con éxito! 🚀 Firma:", tx);
-            alert(`¡Magia pura! Transacción confirmada en la Matrix.\nTu ID de operación es: ${tx}`);
+            transaction.add(initInstruction);
+
+            // 4. ¡Ahora sí! Le mandamos el paquete doble a Phantom para que firmes todo junto
+            console.log("Despertando a Phantom... 🦊");
+            const signature = await provider.sendAndConfirm(transaction);
+
+            console.log("¡Bóveda creada y tokens depositados! 💸🚀 Firma:", signature);
 
         } catch (error) {
             console.error("Error al conectar con la Matrix:", error);
-            alert("Hubo un error al iniciar el traductor. Revisá la consola.");
         }
     };
 

@@ -6,14 +6,13 @@ import { useAnchorWallet, useConnection } from '@solana/wallet-adapter-react';
 import { getProvider, getProgram } from '../utils/anchor';
 
 export default function OrderHistory() {
-    // 1. MOCK DATA: Tenencias
+    // 1. MOCK DATA: Tenencias (Esto lo conectaremos a tu billetera real en la próxima fase)
     const walletHoldings = [
         { asset: 'SOL', balance: '12.45', valueUsdc: '1,805.25', icon: '☀️' },
         { asset: 'USDC', balance: '450.00', valueUsdc: '450.00', icon: '💵' },
         { asset: '$ONOME', balance: '1,200', valueUsdc: '120.00', icon: '🎵' },
     ];
 
-    // 2. MOCK DATA: Múltiples Posiciones Activas con DESGLOSE DE ÓRDENES
     // Herramientas de conexión
     const wallet = useAnchorWallet();
     const { connection } = useConnection();
@@ -41,15 +40,13 @@ export default function OrderHistory() {
                     }
                 ]);
 
-                console.log("¡Bóvedas encontradas! 🐻🔍", myRhythms);
-
                 // Convertimos los datos crudos de Solana a un formato bonito para tu diseño
                 const formattedPositions = myRhythms.map((rhythm: any) => ({
                     id: rhythm.publicKey.toString(), // La dirección de la bóveda
                     pair: 'SOL/USDC', // Por ahora lo dejamos fijo
                     deposited: `${rhythm.account.depositAmount.toString()} USDC`, // Tu depósito real
-                    buyDrop: `${rhythm.account.buyDropPercentage.toString()}%`, // Tu regla de caída
-                    sellPump: `${rhythm.account.sellPumpPercentage.toString()}%`, // Tu regla de subida
+                    buyDrop: rhythm.account.buyDropPercentage.toString(), // Tu regla de caída
+                    sellPump: rhythm.account.sellPumpPercentage.toString(), // Tu regla de subida
                     progress: 0, // Aún no hay progreso real
                     pnl: '0.0%',
                     pnlColor: 'text-gray-400',
@@ -58,8 +55,8 @@ export default function OrderHistory() {
 
                 setRealPositions(formattedPositions);
 
-                // Seleccionamos la primera por defecto si encontramos alguna
-                if (formattedPositions.length > 0) {
+                // Seleccionamos la primera por defecto si encontramos alguna y no hay ninguna seleccionada
+                if (formattedPositions.length > 0 && !selectedPositionId) {
                     setSelectedPositionId(formattedPositions[0].id);
                 }
 
@@ -68,8 +65,16 @@ export default function OrderHistory() {
             }
         };
 
+        // Búsqueda inicial
         fetchMyRhythms();
-    }, [wallet, connection]);
+
+        // MAGIA: Hacemos que busque actualizaciones cada 5 segundos de forma invisible (Polling)
+        const intervalId = setInterval(fetchMyRhythms, 5000);
+
+        // Limpiamos el intervalo si cambiás de página
+        return () => clearInterval(intervalId);
+
+    }, [wallet, connection, selectedPositionId]);
 
     const currentPos = realPositions.find(p => p.id === selectedPositionId);
 
@@ -130,23 +135,27 @@ export default function OrderHistory() {
                         <h3 className="font-bold uppercase text-sm tracking-widest">Active Rhythms</h3>
                     </div>
 
-                    {/* SOLAPAS */}
+                    {/* SOLAPAS REALES */}
                     <div className="flex gap-2 p-4 border-b border-white/5 overflow-x-auto bg-bgMain/30">
-                        {realPositions.map(pos => (
-                            <button
-                                key={pos.id}
-                                onClick={() => setSelectedPositionId(pos.id)}
-                                className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold transition-all whitespace-nowrap border ${selectedPositionId === pos.id
-                                    ? 'bg-brandPrimary text-bgMain border-brandPrimary shadow-lg shadow-brandPrimary/20'
-                                    : 'bg-white/5 text-textMuted border-white/5 hover:bg-white/10 hover:text-white'
-                                    }`}
-                            >
-                                <span>{pos.pair}</span>
-                                <span className={`flex items-center text-[10px] font-mono px-1.5 py-0.5 rounded ${selectedPositionId === pos.id ? 'bg-bgMain/20 text-bgMain' : 'bg-black/40 text-textMuted'}`}>
-                                    <Hash className="w-2.5 h-2.5 mr-0.5" />{pos.id.slice(0, 4)}
-                                </span>
-                            </button>
-                        ))}
+                        {realPositions.length === 0 ? (
+                            <div className="text-xs text-textMuted font-bold italic py-2">No active rhythms found. Create one!</div>
+                        ) : (
+                            realPositions.map(pos => (
+                                <button
+                                    key={pos.id}
+                                    onClick={() => setSelectedPositionId(pos.id)}
+                                    className={`flex items-center gap-2 px-4 py-2 rounded-lg text-xs font-bold transition-all whitespace-nowrap border ${selectedPositionId === pos.id
+                                        ? 'bg-brandPrimary text-bgMain border-brandPrimary shadow-lg shadow-brandPrimary/20'
+                                        : 'bg-white/5 text-textMuted border-white/5 hover:bg-white/10 hover:text-white'
+                                        }`}
+                                >
+                                    <span>{pos.pair}</span>
+                                    <span className={`flex items-center text-[10px] font-mono px-1.5 py-0.5 rounded ${selectedPositionId === pos.id ? 'bg-bgMain/20 text-bgMain' : 'bg-black/40 text-textMuted'}`}>
+                                        <Hash className="w-2.5 h-2.5 mr-0.5" />{pos.id.slice(0, 4)}
+                                    </span>
+                                </button>
+                            ))
+                        )}
                     </div>
 
                     {/* CONTENIDO DE LA SOLAPA ACTIVA */}
@@ -168,6 +177,18 @@ export default function OrderHistory() {
                                     </div>
                                 </div>
 
+                                {/* ETIQUETAS DE REGLAS REALES */}
+                                <div className="flex gap-4 mt-1">
+                                    <div className="bg-white/5 px-3 py-2 rounded-md border border-white/10 text-xs flex-1">
+                                        <span className="text-textMuted uppercase font-bold text-[9px] block mb-1">Buy Drop Target</span>
+                                        <span className="text-brandPrimary font-mono font-bold">-{currentPos.buyDrop}%</span>
+                                    </div>
+                                    <div className="bg-white/5 px-3 py-2 rounded-md border border-white/10 text-xs flex-1">
+                                        <span className="text-textMuted uppercase font-bold text-[9px] block mb-1">Take Profit Target</span>
+                                        <span className="text-green-400 font-mono font-bold">+{currentPos.sellPump}%</span>
+                                    </div>
+                                </div>
+
                                 {/* Barra de Progreso (Mantenida por lo visual) */}
                                 <div className="space-y-1.5 mt-2">
                                     <div className="flex justify-between text-[10px] uppercase font-bold text-textMuted">
@@ -184,40 +205,51 @@ export default function OrderHistory() {
                                     </div>
                                 </div>
 
-                                {/* NUEVO: TABLA DE DESGLOSE DE ÓRDENES */}
-                                <div className="mt-4 border border-white/5 bg-black/20 rounded-lg overflow-hidden">
+                                {/* TABLA DE DESGLOSE DE ÓRDENES O BOT VIGILANTE */}
+                                <div className="mt-4 border border-white/5 bg-black/20 rounded-lg overflow-hidden min-h-[120px]">
                                     <div className="p-3 border-b border-white/5 flex items-center gap-2">
                                         <ListOrdered className="w-3.5 h-3.5 text-textMuted" />
                                         <span className="text-[10px] text-textMuted font-bold uppercase tracking-wider">Execution Breakdown</span>
                                     </div>
-                                    <div className="overflow-x-auto">
-                                        <table className="w-full text-left text-xs whitespace-nowrap">
-                                            <thead className="text-textMuted text-[9px] uppercase bg-white/5">
-                                                <tr>
-                                                    <th className="px-4 py-2 font-bold">#</th>
-                                                    <th className="px-4 py-2 font-bold">Invested</th>
-                                                    <th className="px-4 py-2 font-bold">Bought</th>
-                                                    <th className="px-4 py-2 font-bold">Entry Price</th>
-                                                    <th className="px-4 py-2 font-bold">Date</th>
-                                                    <th className="px-4 py-2 font-bold text-right">Current Value</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody className="divide-y divide-white/5">
-                                                {currentPos.orders.map((order: any) => (
-                                                    <tr key={order.id} className="hover:bg-white/5 transition-colors">
-                                                        <td className="px-4 py-2.5 text-textMuted font-mono">{order.id}</td>
-                                                        <td className="px-4 py-2.5 text-white font-mono">{order.invested} <span className="text-[9px] text-textMuted">USDC</span></td>
-                                                        <td className="px-4 py-2.5 text-brandPrimary font-mono font-bold">{order.bought}</td>
-                                                        <td className="px-4 py-2.5 text-textMuted font-mono">{order.price}</td>
-                                                        <td className="px-4 py-2.5 text-textMuted">{order.date}</td>
-                                                        <td className={`px-4 py-2.5 font-mono font-bold text-right ${order.isProfit ? 'text-green-400' : 'text-red-400'}`}>
-                                                            {order.currentValue}
-                                                        </td>
+
+                                    {currentPos.orders.length > 0 ? (
+                                        <div className="overflow-x-auto">
+                                            <table className="w-full text-left text-xs whitespace-nowrap">
+                                                <thead className="text-textMuted text-[9px] uppercase bg-white/5">
+                                                    <tr>
+                                                        <th className="px-4 py-2 font-bold">#</th>
+                                                        <th className="px-4 py-2 font-bold">Invested</th>
+                                                        <th className="px-4 py-2 font-bold">Bought</th>
+                                                        <th className="px-4 py-2 font-bold">Entry Price</th>
+                                                        <th className="px-4 py-2 font-bold">Date</th>
+                                                        <th className="px-4 py-2 font-bold text-right">Current Value</th>
                                                     </tr>
-                                                ))}
-                                            </tbody>
-                                        </table>
-                                    </div>
+                                                </thead>
+                                                <tbody className="divide-y divide-white/5">
+                                                    {currentPos.orders.map((order: any) => (
+                                                        <tr key={order.id} className="hover:bg-white/5 transition-colors">
+                                                            <td className="px-4 py-2.5 text-textMuted font-mono">{order.id}</td>
+                                                            <td className="px-4 py-2.5 text-white font-mono">{order.invested} <span className="text-[9px] text-textMuted">USDC</span></td>
+                                                            <td className="px-4 py-2.5 text-brandPrimary font-mono font-bold">{order.bought}</td>
+                                                            <td className="px-4 py-2.5 text-textMuted font-mono">{order.price}</td>
+                                                            <td className="px-4 py-2.5 text-textMuted">{order.date}</td>
+                                                            <td className={`px-4 py-2.5 font-mono font-bold text-right ${order.isProfit ? 'text-green-400' : 'text-red-400'}`}>
+                                                                {order.currentValue}
+                                                            </td>
+                                                        </tr>
+                                                    ))}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    ) : (
+                                        <div className="p-8 text-center flex flex-col items-center justify-center">
+                                            <Activity className="w-8 h-8 text-brandPrimary mb-3 animate-pulse opacity-80" />
+                                            <p className="text-sm text-white font-bold">Bot is watching the market 🐻👀</p>
+                                            <p className="text-[11px] text-textMuted mt-1.5 max-w-[250px] leading-relaxed">
+                                                Awaiting for Solana to drop <strong className="text-brandPrimary">-{currentPos.buyDrop}%</strong> to execute your first order.
+                                            </p>
+                                        </div>
+                                    )}
                                 </div>
 
                                 {/* Botones de Acción */}
