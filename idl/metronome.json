@@ -8,6 +8,32 @@
   },
   "instructions": [
     {
+      "name": "check_and_execute",
+      "discriminator": [
+        5,
+        117,
+        98,
+        33,
+        10,
+        224,
+        180,
+        3
+      ],
+      "accounts": [
+        {
+          "name": "rhythm_account",
+          "writable": true
+        },
+        {
+          "name": "pyth_oracle",
+          "docs": [
+            "Le ponemos CHECK porque nosotros confiamos ciegamente en la dirección de Pyth."
+          ]
+        }
+      ],
+      "args": []
+    },
+    {
       "name": "initialize_rhythm",
       "discriminator": [
         44,

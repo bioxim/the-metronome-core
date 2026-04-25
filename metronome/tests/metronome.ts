@@ -1,43 +1,64 @@
 import * as anchor from "@coral-xyz/anchor";
 import { Program } from "@coral-xyz/anchor";
 import { Metronome } from "../target/types/metronome";
-import { expect } from "chai";
+import { PublicKey, SystemProgram } from "@solana/web3.js";
+import { TOKEN_PROGRAM_ID, createMint, createAssociatedTokenAccount, mintTo, getOrCreateAssociatedTokenAccount } from "@solana/spl-token";
+import { BN } from "bn.js";
 
 describe("metronome", () => {
-    // Configura tu compu para simular la red de Solana
-    const provider = anchor.AnchorProvider.env();
-    anchor.setProvider(provider);
+  const provider = anchor.AnchorProvider.env();
+  anchor.setProvider(provider);
+  const program = anchor.workspace.Metronome as Program<Metronome>;
 
-    const program = anchor.workspace.Metronome as Program<Metronome>;
+  // 🌟 La cuenta clonada de Pyth (SOL/USD)
+  const PYTH_ORACLE = new PublicKey("H6ARHf6YXhGYeQfUzQNGk6rDNnLBQKrenN712K4AQJEG");
 
-    it("¡Inicializa un Rhythm correctamente!", async () => {
-        // 1. Creamos una "bóveda" vacía para guardar los datos
-        const rhythmAccount = anchor.web3.Keypair.generate();
+  it("¡El Oso despierta y lee el Oráculo!", async () => {
+    const wallet = provider.wallet as anchor.Wallet;
 
-        // 2. Definimos los datos que mandaría el usuario desde tu web
-        const depositAmount = new anchor.BN(100); // 100 USDC
-        const buyDrop = 5; // Comprar si cae 5%
-        const sellPump = 10; // Vender si sube 10%
+    // 1. Imprimir dólares falsos solo para este test
+    const mint = await createMint(provider.connection, wallet.payer, wallet.publicKey, null, 6);
+    const userTokenAccount = await createAssociatedTokenAccount(provider.connection, wallet.payer, mint, wallet.publicKey);
+    await mintTo(provider.connection, wallet.payer, mint, userTokenAccount, wallet.payer, 1000000);
 
-        // 3. Ejecutamos tu Contrato Inteligente en Rust
-        await program.methods
-            .initializeRhythm(depositAmount, buyDrop, sellPump)
-            .accounts({
-                rhythmAccount: rhythmAccount.publicKey,
-                user: provider.wallet.publicKey,
-            })
-            .signers([rhythmAccount])
-            .rpc();
+    // 2. Crear la Bóveda con un ID basado en la hora actual
+    const rhythmId = new BN(Date.now());
+    const [rhythmPDA] = PublicKey.findProgramAddressSync(
+      [Buffer.from("rhythm"), wallet.publicKey.toBuffer(), rhythmId.toArrayLike(Buffer, "le", 8)],
+      program.programId
+    );
+    const vaultAccount = await getOrCreateAssociatedTokenAccount(provider.connection, wallet.payer, mint, rhythmPDA, true);
+    const vaultTokenAccount = vaultAccount.address;
 
-        // 4. Vamos a leer la blockchain de mentira para ver si se guardó la info
-        const account = await program.account.rhythm.fetch(rhythmAccount.publicKey);
+    // 3. Ejecutar el contrato: Guardar las reglas
+    // 3. Ejecutar el contrato: Guardar las reglas
+    await program.methods.initializeRhythm(rhythmId, new BN(100), 1, 15)
+      .accounts({
+        user: wallet.publicKey,
+        userTokenAccount: userTokenAccount,
+        vaultTokenAccount: vaultTokenAccount,
+      })
+      .rpc();
 
-        // 5. Imprimimos los resultados en la consola
-        console.log("Wallet del dueño:", account.owner.toBase58());
-        console.log("Plata depositada:", account.depositAmount.toString(), "USDC");
-        console.log("Drop:", account.buyDropPercentage, "% | Pump:", account.sellPumpPercentage, "%");
+    // 4. 🐻👀 ¡EL OSO MIRA EL ORÁCULO!
+    const tx = await program.methods.checkAndExecute()
+      .accounts({
+        rhythmAccount: rhythmPDA,
+        pythOracle: PYTH_ORACLE,
+      })
+      .rpc();
 
-        // 6. La validación profesional
-        expect(account.depositAmount.toNumber()).to.equal(100);
+    // 5. El Hacker Logger: Extraemos el mensaje secreto de la Matrix
+    await provider.connection.confirmTransaction(tx, "confirmed");
+    const txDetails = await provider.connection.getTransaction(tx, { commitment: "confirmed" });
+
+    console.log("\n=======================================================");
+    console.log("🕵️‍♀️ LOGS SECRETOS DE LA MATRIX:");
+    txDetails?.meta?.logMessages?.forEach(log => {
+      if (log.includes("Oso") || log.includes("Precio")) {
+        console.log("👉", log);
+      }
     });
+    console.log("=======================================================\n");
+  });
 });

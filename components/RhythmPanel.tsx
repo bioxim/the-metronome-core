@@ -11,7 +11,7 @@ import { PublicKey, Transaction } from '@solana/web3.js';
 import { TOKEN_PROGRAM_ID, getAssociatedTokenAddress, createAssociatedTokenAccountIdempotentInstruction } from '@solana/spl-token';
 
 // EL ID DE TU DÓLAR FALSO
-const USDC_MINT = new PublicKey("H3eqFvS6VSWhBUXSiYGZqv29vEiU3SBF5Lry1F5VEv5m");
+const USDC_MINT = new PublicKey("CCtrTqDVCjcfXCkDwewkixkJu32G8Ui5eAUN41rkPZ1J");
 
 export default function RhythmPanel() {
     // 1. Estados
@@ -102,6 +102,18 @@ export default function RhythmPanel() {
                 .instruction(); // Armamos el paquete, pero no lo mandamos todavía
 
             transaction.add(initInstruction);
+
+            // 👇 ORÁCULO DE PYTH
+            const PYTH_SOL_USD = new PublicKey("H6ARHf6YXhGYeQfUzQNGk6rDNnLBQKrenN712K4AQJEG"); // El clon que trajimos de Mainnet
+
+            const checkInstruction = await program.methods.checkAndExecute()
+                .accounts({
+                    rhythmAccount: rhythmPDA,
+                    pythOracle: PYTH_SOL_USD
+                })
+                .instruction();
+
+            transaction.add(checkInstruction);
 
             // 4. ¡Ahora sí! Le mandamos el paquete doble a Phantom para que firmes todo junto
             console.log("Despertando a Phantom... 🦊");
