@@ -1,6 +1,6 @@
 use anchor_lang::prelude::*;
 use anchor_spl::token::{self, Token, TokenAccount, Transfer};
-use pyth_sdk_solana::load_price_feed_from_account_info; // 👈 NUEVO: Importamos Pyth
+use pyth_sdk_solana::load_price_feed_from_account_info; // 👈 Mantenemos Pyth
 
 declare_id!("EiysWuzqfv7eg7YBiBos7pKYEDQjLCyKvYnjPnD8GiLU");
 
@@ -36,21 +36,47 @@ pub mod metronome {
         Ok(())
     }
 
-    // 🌟 NUEVO: La función del Bot Vigía
+    // 🌟 NUEVO: La función del Bot Vigía con Instinto Financiero
     pub fn check_and_execute(ctx: Context<CheckAndExecute>) -> Result<()> {
+        let rhythm = &mut ctx.accounts.rhythm_account;
+
         // 1. Cargamos la cuenta del oráculo de Pyth
         let price_account_info = &ctx.accounts.pyth_oracle;
         let price_feed = load_price_feed_from_account_info(price_account_info).unwrap();
         
-        // 2. Obtenemos el precio actual de Solana
-        let current_price = price_feed.get_price_unchecked();
+        // 2. Obtenemos el precio actual de Solana (Pyth lo devuelve con 8 ceros extra)
+        let current_price_data = price_feed.get_price_unchecked();
+        let current_price = current_price_data.price as u64; 
         
         // 3. Lo anotamos en la consola de la Matrix
         msg!("🐻👀 El Oso miró el Oráculo Pyth.");
-        msg!("Precio actual detectado: {}", current_price.price);
+        msg!("Precio actual detectado: {}", current_price);
+
+        // 4. La Matemática del Francotirador
+        // Asumimos un precio de referencia de $150 USD. 
+        // Le agregamos 8 ceros para que hable el mismo idioma que Pyth.
+        let reference_price: u64 = 150_0000_0000; 
         
-        // TODO: En el próximo paso agregaremos la matemática para comprar 
-        // si el precio cayó lo que marca la regla de la bóveda.
+        // Calculamos objetivos usando las variables correctas de tu diccionario
+        let target_buy_price = reference_price - (reference_price * rhythm.buy_drop_percentage as u64 / 100);
+        let target_sell_price = target_buy_price + (target_buy_price * rhythm.sell_pump_percentage as u64 / 100);
+
+        // 5. El Instinto (Ejecución de decisiones)
+        if current_price <= target_buy_price {
+            msg!("📉 ¡ALERTA DE CAÍDA! Precio bajó a {}. Objetivo: {}", current_price, target_buy_price);
+            msg!("🔫 EL OSO APRIETA EL GATILLO: ¡Comprando Solana (DCA)!");
+            
+            // Acá iría el CPI a Raydium/Orca
+            
+        } else if current_price >= target_sell_price {
+            msg!("🚀 ¡ALERTA DE SUBIDA! Precio subió a {}. Objetivo: {}", current_price, target_sell_price);
+            msg!("💰 EL OSO ASEGURA GANANCIAS: ¡Vendiendo Solana y cerrando bóveda!");
+            
+            // Acá iría el swap de vuelta a USDC
+            
+        } else {
+            msg!("💤 El precio está en rango aburrido. El Oso sigue esperando con paciencia.");
+        }
 
         Ok(())
     }
@@ -81,14 +107,12 @@ pub struct InitializeRhythm<'info> {
     pub system_program: Program<'info, System>,
 }
 
-// 🌟 NUEVO: Las cuentas necesarias para que el bot mire el precio
 #[derive(Accounts)]
 pub struct CheckAndExecute<'info> {
     #[account(mut)]
     pub rhythm_account: Account<'info, Rhythm>,
 
     /// CHECK: Esta es la cuenta oficial de Pyth que contiene el precio. 
-    /// Le ponemos CHECK porque nosotros confiamos ciegamente en la dirección de Pyth.
     pub pyth_oracle: AccountInfo<'info>, 
 }
 

@@ -1,71 +1,109 @@
 "use client";
 
-import { useState } from "react";
-import { Equal, TrendingUp, ShieldCheck, AlertCircle } from "lucide-react";
+import { useState, useEffect } from "react";
+import { Equal, TrendingUp, ShieldCheck, AlertCircle, Calculator, Brain, Loader2 } from "lucide-react";
 import { useConnection, useWallet } from '@solana/wallet-adapter-react';
-// Asegurate de que la ruta a utils/anchor sea correcta según tus carpetas
 import { getProvider, getProgram } from '../utils/anchor';
 import { BN, web3 } from '@coral-xyz/anchor';
-
 import { PublicKey, Transaction } from '@solana/web3.js';
 import { TOKEN_PROGRAM_ID, getAssociatedTokenAddress, createAssociatedTokenAccountIdempotentInstruction } from '@solana/spl-token';
+import Link from "next/link";
 
-// EL ID DE TU DÓLAR FALSO
-const USDC_MINT = new PublicKey("CCtrTqDVCjcfXCkDwewkixkJu32G8Ui5eAUN41rkPZ1J");
+const USDC_MINT = new PublicKey("HGVevYYdPNSDg8ottoHgfefmtgH3bdmLozX9XdavwkiT");
 
 export default function RhythmPanel() {
-    // 1. Estados
+    // 1. Estados Limpios (Inician vacíos)
     const [mode, setMode] = useState<'fixed' | 'crescendo'>('fixed');
-    const [totalBudget, setTotalBudget] = useState<number>(100);
-    const [buyDropPercent, setBuyDropPercent] = useState<number>(1.5);
-    const [buyAmount, setBuyAmount] = useState<number>(20);
-    const [crescendoIncrease, setCrescendoIncrease] = useState<number>(2);
-    const [takeProfitPercent, setTakeProfitPercent] = useState<number>(15.0);
+    const [totalBudget, setTotalBudget] = useState<number | ''>('');
+    const [buyDropPercent, setBuyDropPercent] = useState<number | ''>('');
+    const [buyAmount, setBuyAmount] = useState<number | ''>('');
+    const [crescendoIncrease, setCrescendoIncrease] = useState<number | ''>('');
+    const [takeProfitPercent, setTakeProfitPercent] = useState<number | ''>('');
+
+    // Estados de UI
+    const [availableBalance, setAvailableBalance] = useState<number>(0);
+    const [isProcessing, setIsProcessing] = useState(false);
+    const [buttonText, setButtonText] = useState("START METRONOME");
+
     const { connection } = useConnection();
     const wallet = useWallet();
 
-    // 2. Validaciones de Seguridad
-    const isBudgetError = buyAmount > totalBudget;
+    // 2. Traer el balance REAL de USDC falso de tu Matrix Local
+    useEffect(() => {
+        const fetchBalance = async () => {
+            if (wallet.publicKey) {
+                try {
+                    // Calculamos dónde está tu "caja fuerte" de USDC
+                    const userTokenAccount = await getAssociatedTokenAddress(USDC_MINT, wallet.publicKey);
+                    // Leemos cuántos tokens hay adentro
+                    const balance = await connection.getTokenAccountBalance(userTokenAccount);
+                    setAvailableBalance(balance.value.uiAmount || 0);
+                } catch (error) {
+                    // Si tira error, es porque la cuenta de USDC no existe en tu billetera todavía
+                    console.log("No se encontró cuenta de USDC, balance es 0.");
+                    setAvailableBalance(0);
+                }
+            } else {
+                setAvailableBalance(0);
+            }
+        };
 
-    // 3. Matemática en tiempo real
-    const projectedOnomeRewards = Math.floor(totalBudget / 10);
-    const maxEstimatedProfit = (totalBudget * (takeProfitPercent / 100)).toFixed(2);
+        // Hacemos que consulte apenas cargue, y también lo metemos en un intervalo
+        // para que se actualice cada 5 segundos (por si te depositás más plata)
+        fetchBalance();
+        const interval = setInterval(fetchBalance, 5000);
+        return () => clearInterval(interval);
+    }, [wallet.publicKey, connection]);
+
+    // 3. Conversión segura a números para la matemática
+    const numBudget = Number(totalBudget) || 0;
+    const numBuyAmount = Number(buyAmount) || 0;
+    const numDrop = Number(buyDropPercent) || 0;
+    const numProfit = Number(takeProfitPercent) || 0;
+    const numIncrease = Number(crescendoIncrease) || 0;
+
+    // 4. Validaciones
+    const isBudgetError = numBuyAmount > numBudget && numBuyAmount > 0;
+    const isFormIncomplete = !totalBudget || !buyAmount || !buyDropPercent || !takeProfitPercent;
+
+    // 5. Matemática en tiempo real
+    const projectedOnomeRewards = Math.floor(numBudget / 10);
+    const maxEstimatedProfit = (numBudget * (numProfit / 100)).toFixed(2);
 
     let maxPurchases = 0;
-    if (buyAmount > 0 && !isBudgetError) {
+    if (numBuyAmount > 0 && !isBudgetError) {
         if (mode === 'fixed') {
-            maxPurchases = Math.floor(totalBudget / buyAmount);
+            maxPurchases = Math.floor(numBudget / numBuyAmount);
         } else {
-            let currentBudget = totalBudget;
-            let currentBuy = buyAmount;
+            let currentBudget = numBudget;
+            let currentBuy = numBuyAmount;
             while (currentBudget >= currentBuy) {
                 maxPurchases++;
                 currentBudget -= currentBuy;
-                currentBuy += crescendoIncrease;
+                currentBuy += numIncrease;
             }
         }
     }
 
-    // 4. El Disparador Web3 Final
+    // Función rápida para el botón MAX
+    const handleMaxBudget = () => {
+        setTotalBudget(Math.floor(availableBalance));
+    };
+
+    // 6. El Disparador Web3
     const handleStartMetronome = async () => {
-        if (!wallet.connected || !wallet.publicKey) return;
+        if (!wallet.connected || !wallet.publicKey || isFormIncomplete) return;
+
+        setIsProcessing(true);
+        setButtonText("Waking up the Bear... 🐻");
 
         try {
             const provider = getProvider(wallet, connection);
             const program = getProgram(provider);
-
-            console.log("Calculando rutas de dinero... 🗺️");
-
-            // 🌟 NUEVO: Creamos un ID único usando la hora actual
             const rhythmId = new BN(Date.now());
 
-            // 1. Encontrar la dirección de tu bóveda usando la nueva fórmula
             const [rhythmPDA] = PublicKey.findProgramAddressSync(
-                [
-                    Buffer.from("rhythm"),
-                    wallet.publicKey.toBuffer(),
-                    rhythmId.toArrayLike(Buffer, 'le', 8) // Le sumamos el ID a la fórmula
-                ],
+                [Buffer.from("rhythm"), wallet.publicKey.toBuffer(), rhythmId.toArrayLike(Buffer, 'le', 8)],
                 program.programId
             );
 
@@ -74,97 +112,114 @@ export default function RhythmPanel() {
 
             const transaction = new Transaction();
 
-            // Paso A: Crear la "caja fuerte" física en la bóveda (solo la crea si no existe)
             transaction.add(
                 createAssociatedTokenAccountIdempotentInstruction(
-                    wallet.publicKey, // Vos pagás el sellado
-                    vaultTokenAccount, // La cuenta nueva a crear
-                    rhythmPDA, // El dueño absoluto es la bóveda
-                    USDC_MINT // El tipo de billete (Nuestro USDC falso)
+                    wallet.publicKey, vaultTokenAccount, rhythmPDA, USDC_MINT
                 )
             );
 
-            // Paso B: La instrucción de tu contrato en Rust con las variables correctas
+            setButtonText("Confirm in Phantom... 🦊");
+
             const initInstruction = await program.methods.initializeRhythm(
-                rhythmId, // 👈 ACÁ ESTABA EL PROBLEMA, FALTABA PASARLE EL ID
-                new BN(totalBudget),
-                Math.floor(buyDropPercent),
-                Math.floor(takeProfitPercent)
+                rhythmId, new BN(numBudget), Math.floor(numDrop), Math.floor(numProfit)
             )
                 .accounts({
                     rhythmAccount: rhythmPDA,
                     user: wallet.publicKey,
-                    userTokenAccount: userTokenAccount, // De dónde sale la plata
-                    vaultTokenAccount: vaultTokenAccount, // A dónde entra la plata
-                    tokenProgram: TOKEN_PROGRAM_ID, // El Banco
-                    systemProgram: web3.SystemProgram.programId, // Usamos web3 directamente
+                    userTokenAccount: userTokenAccount,
+                    vaultTokenAccount: vaultTokenAccount,
+                    tokenProgram: TOKEN_PROGRAM_ID,
+                    systemProgram: web3.SystemProgram.programId,
                 })
-                .instruction(); // Armamos el paquete, pero no lo mandamos todavía
+                .instruction();
 
             transaction.add(initInstruction);
 
-            // 👇 ORÁCULO DE PYTH
-            const PYTH_SOL_USD = new PublicKey("H6ARHf6YXhGYeQfUzQNGk6rDNnLBQKrenN712K4AQJEG"); // El clon que trajimos de Mainnet
-
+            const PYTH_SOL_USD = new PublicKey("H6ARHf6YXhGYeQfUzQNGk6rDNnLBQKrenN712K4AQJEG");
             const checkInstruction = await program.methods.checkAndExecute()
-                .accounts({
-                    rhythmAccount: rhythmPDA,
-                    pythOracle: PYTH_SOL_USD
-                })
+                .accounts({ rhythmAccount: rhythmPDA, pythOracle: PYTH_SOL_USD })
                 .instruction();
 
             transaction.add(checkInstruction);
 
-            // 4. ¡Ahora sí! Le mandamos el paquete doble a Phantom para que firmes todo junto
-            console.log("Despertando a Phantom... 🦊");
             const signature = await provider.sendAndConfirm(transaction);
+            console.log("¡Éxito! Firma:", signature);
 
-            console.log("¡Bóveda creada y tokens depositados! 💸🚀 Firma:", signature);
+            setButtonText("VAULT CREATED! 🚀");
+            setTimeout(() => {
+                setButtonText("START METRONOME");
+                setIsProcessing(false);
+                setTotalBudget(''); setBuyAmount(''); setBuyDropPercent(''); setTakeProfitPercent('');
+            }, 3000);
 
         } catch (error) {
-            console.error("Error al conectar con la Matrix:", error);
+            console.error("Error Matrix:", error);
+            setButtonText("ERROR - TRY AGAIN");
+            setTimeout(() => { setButtonText("START METRONOME"); setIsProcessing(false); }, 3000);
         }
     };
 
     return (
-        <div className="bg-bgSecondary border border-white/10 rounded-xl p-6 shadow-2xl flex flex-col gap-6 w-full">
+        <div className="bg-bgSecondary border border-white/10 rounded-xl p-6 shadow-2xl flex flex-col w-full">
 
-            {/* HEADER: Título principal y Solapas */}
-            <div className="flex justify-between items-center border-b border-white/5 pb-4">
+            {/* HEADER y HERRAMIENTAS */}
+            <div className="flex justify-between items-center mb-6">
                 <h2 className="text-xl font-extrabold text-white flex items-center gap-2">
-                    <span>🎛️</span> Create
+                    🎛️ Setup Rhythm
                 </h2>
 
-                {/* Contenedor de solapas sin que empuje los márgenes (shrink-0) */}
-                <div className="flex bg-bgMain rounded-lg p-1 border border-white/5 shrink-0">
-                    <button
-                        onClick={() => setMode('fixed')}
-                        className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-md transition-all ${mode === 'fixed' ? 'bg-white/10 text-brandPrimary shadow' : 'text-textMuted hover:text-white'
-                            }`}
-                    >
-                        <Equal className="w-3 h-3" /> Fixed
-                    </button>
-                    <button
-                        onClick={() => setMode('crescendo')}
-                        className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-md transition-all ${mode === 'crescendo' ? 'bg-white/10 text-purple-400 shadow' : 'text-textMuted hover:text-white'
-                            }`}
-                    >
-                        <TrendingUp className="w-3 h-3" /> Crescendo
-                    </button>
+                {/* Links a las herramientas */}
+                <div className="flex gap-4 text-xs font-medium">
+                    <Link href="/tools/calculator" className="flex items-center gap-1.5 text-brandPrimary hover:text-white transition-colors">
+                        <Calculator className="w-3.5 h-3.5" /> Yield Calc
+                    </Link>
+                    <Link href="/tools/oracle" className="flex items-center gap-1.5 text-purple-400 hover:text-white transition-colors">
+                        <Brain className="w-3.5 h-3.5" /> AI Oracle
+                    </Link>
                 </div>
             </div>
 
-            <div className="space-y-5">
-                {/* Presupuesto Total */}
+            {/* Solapas de Modo */}
+            <div className="flex bg-bgMain rounded-lg p-1 border border-white/5 mb-6 w-fit">
+                <button
+                    onClick={() => setMode('fixed')}
+                    className={`flex items-center gap-1.5 px-4 py-2 text-xs font-bold rounded-md transition-all ${mode === 'fixed' ? 'bg-white/10 text-brandPrimary shadow' : 'text-textMuted hover:text-white'}`}
+                >
+                    <Equal className="w-3.5 h-3.5" /> Fixed
+                </button>
+                <button
+                    onClick={() => setMode('crescendo')}
+                    className={`flex items-center gap-1.5 px-4 py-2 text-xs font-bold rounded-md transition-all ${mode === 'crescendo' ? 'bg-white/10 text-purple-400 shadow' : 'text-textMuted hover:text-white'}`}
+                >
+                    <TrendingUp className="w-3.5 h-3.5" /> Crescendo
+                </button>
+            </div>
+
+            <div className="space-y-6">
+                {/* Presupuesto Total con Balance */}
                 <div>
-                    <label className="text-[10px] text-textMuted font-bold uppercase block mb-2">Total Budget (USDC)</label>
-                    <input
-                        type="number"
-                        min="0"
-                        value={totalBudget}
-                        onChange={(e) => setTotalBudget(Number(e.target.value))}
-                        className="w-full bg-bgMain border border-white/5 rounded-lg p-3 text-lg font-mono text-white focus:border-brandPrimary focus:outline-none transition-colors"
-                    />
+                    <div className="flex justify-between items-end mb-2">
+                        <label className="text-[10px] text-textMuted font-bold uppercase block">Total Budget (USDC)</label>
+                        <span className="text-[10px] text-brandPrimary/70 italic font-light">
+                            Available: {availableBalance.toLocaleString()} USDC
+                        </span>
+                    </div>
+                    <div className="relative">
+                        <input
+                            type="number"
+                            min="0"
+                            placeholder="e.g. 500"
+                            value={totalBudget}
+                            onChange={(e) => setTotalBudget(e.target.value ? Number(e.target.value) : '')}
+                            className="w-full bg-bgMain border border-white/5 rounded-lg p-3 pr-16 text-lg font-mono text-white placeholder:text-white/20 focus:border-brandPrimary focus:outline-none transition-colors"
+                        />
+                        <button
+                            onClick={handleMaxBudget}
+                            className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] font-bold bg-brandPrimary/10 text-brandPrimary px-2 py-1 rounded hover:bg-brandPrimary/20 transition-colors"
+                        >
+                            MAX
+                        </button>
+                    </div>
                 </div>
 
                 {/* Estrategia de Compra */}
@@ -175,9 +230,10 @@ export default function RhythmPanel() {
                             type="number"
                             step="0.1"
                             min="0"
+                            placeholder="e.g. 2.5"
                             value={buyDropPercent}
-                            onChange={(e) => setBuyDropPercent(Number(e.target.value))}
-                            className="w-full bg-bgMain border border-white/5 rounded-lg p-3 text-lg font-mono text-brandPrimary focus:border-brandPrimary focus:outline-none transition-colors"
+                            onChange={(e) => setBuyDropPercent(e.target.value ? Number(e.target.value) : '')}
+                            className="w-full bg-bgMain border border-white/5 rounded-lg p-3 text-lg font-mono text-brandPrimary placeholder:text-brandPrimary/20 focus:border-brandPrimary focus:outline-none transition-colors"
                         />
                     </div>
                     <div>
@@ -185,39 +241,18 @@ export default function RhythmPanel() {
                         <input
                             type="number"
                             min="0"
+                            placeholder="e.g. 50"
                             value={buyAmount}
-                            onChange={(e) => setBuyAmount(Number(e.target.value))}
-                            className={`w-full bg-bgMain border rounded-lg p-3 text-lg font-mono text-white focus:outline-none transition-colors ${isBudgetError ? 'border-red-500 text-red-400 focus:border-red-500' : 'border-white/5 focus:border-brandPrimary'
-                                }`}
+                            onChange={(e) => setBuyAmount(e.target.value ? Number(e.target.value) : '')}
+                            className={`w-full bg-bgMain border rounded-lg p-3 text-lg font-mono text-white placeholder:text-white/20 focus:outline-none transition-colors ${isBudgetError ? 'border-red-500 text-red-400 focus:border-red-500' : 'border-white/5 focus:border-brandPrimary'}`}
                         />
                     </div>
                 </div>
 
-                {/* Mensaje de Error (Base Buy > Budget) */}
                 {isBudgetError && (
                     <p className="text-red-400 text-[11px] flex items-center gap-1 mt-[-10px] font-bold">
-                        <AlertCircle className="w-3 h-3" />
-                        Base buy cannot exceed total budget.
+                        <AlertCircle className="w-3 h-3" /> Base buy cannot exceed total budget.
                     </p>
-                )}
-
-                {/* Input Dinámico: Crescendo (Encapsulado para evitar salientes) */}
-                {mode === 'crescendo' && !isBudgetError && (
-                    <div className="w-full animate-in fade-in slide-in-from-top-2 duration-300 bg-purple-900/20 border border-purple-500/30 rounded-xl p-4 mt-2 overflow-hidden">
-                        <label className="text-[10px] text-purple-400 font-bold uppercase flex items-center gap-1 mb-2">
-                            <TrendingUp className="w-3 h-3" /> Step Increase (USDC)
-                        </label>
-                        <input
-                            type="number"
-                            min="0"
-                            value={crescendoIncrease}
-                            onChange={(e) => setCrescendoIncrease(Number(e.target.value))}
-                            className="w-full bg-bgMain/50 border border-purple-500/50 rounded-lg p-3 text-lg font-mono text-white focus:border-purple-400 focus:outline-none transition-colors"
-                        />
-                        <p className="text-[11px] text-textMuted mt-2 leading-relaxed">
-                            Next buys will be: <span className="font-mono text-purple-300 font-bold">{buyAmount + crescendoIncrease}</span> USDC, then <span className="font-mono text-purple-300 font-bold">{buyAmount + (crescendoIncrease * 2)}</span> USDC...
-                        </p>
-                    </div>
                 )}
 
                 {/* Estrategia de Venta */}
@@ -227,46 +262,53 @@ export default function RhythmPanel() {
                         type="number"
                         step="0.1"
                         min="0"
+                        placeholder="e.g. 15.0"
                         value={takeProfitPercent}
-                        onChange={(e) => setTakeProfitPercent(Number(e.target.value))}
-                        className="w-full bg-bgMain border border-white/5 rounded-lg p-3 text-lg font-mono text-green-400 focus:border-green-400 focus:outline-none transition-colors"
+                        onChange={(e) => setTakeProfitPercent(e.target.value ? Number(e.target.value) : '')}
+                        className="w-full bg-bgMain border border-white/5 rounded-lg p-3 text-lg font-mono text-green-400 placeholder:text-green-400/20 focus:border-green-400 focus:outline-none transition-colors"
                     />
                 </div>
 
-                {/* Feedback y Transparencia */}
-                <div className="bg-bgMain p-4 rounded-lg border border-white/5 text-xs text-textMuted space-y-2">
+                {/* Feedback Box (Sólo si hay datos básicos) */}
+                <div className={`bg-bgMain p-4 rounded-lg border border-white/5 text-xs text-textMuted space-y-2 transition-opacity ${isFormIncomplete ? 'opacity-50' : 'opacity-100'}`}>
                     <div className="flex justify-between">
                         <span>Estimated Orders:</span>
-                        <span className={`font-mono font-bold ${maxPurchases === 0 ? 'text-red-400' : 'text-white'}`}>
-                            {maxPurchases}
+                        <span className={`font-mono font-bold ${maxPurchases === 0 ? 'text-textMuted' : 'text-white'}`}>
+                            {maxPurchases || '-'}
                         </span>
                     </div>
                     <div className="flex justify-between items-center border-b border-white/10 pb-2">
                         <span>Target Profit:</span>
-                        <span className="font-mono text-green-400 font-bold text-sm">+${maxEstimatedProfit} USDC</span>
+                        <span className="font-mono text-green-400 font-bold text-sm">
+                            {numProfit > 0 ? `+$${maxEstimatedProfit} USDC` : '-'}
+                        </span>
                     </div>
                     <div className="flex justify-between pt-1">
                         <span>Projected Rewards:</span>
-                        <span className="font-mono text-brandPrimary font-bold">+{projectedOnomeRewards} $ONOME</span>
+                        <span className="font-mono text-brandPrimary font-bold">
+                            {numBudget > 0 ? `+${projectedOnomeRewards} $ONOME` : '-'}
+                        </span>
                     </div>
                 </div>
 
-                {/* Botón de Acción */}
+                {/* Botón de Acción Dinámico */}
                 <button
                     onClick={handleStartMetronome}
-                    disabled={isBudgetError}
-                    className={`w-full font-extrabold py-4 px-6 rounded-lg transition-all transform ${isBudgetError
+                    disabled={isBudgetError || isFormIncomplete || isProcessing}
+                    className={`w-full font-extrabold py-4 px-6 rounded-lg transition-all transform flex items-center justify-center gap-2 ${isBudgetError || isFormIncomplete
                         ? 'bg-white/5 text-textMuted cursor-not-allowed'
-                        : 'bg-brandPrimary text-bgMain hover:bg-white hover:scale-[1.02] shadow-lg shadow-brandPrimary/20'
+                        : isProcessing
+                            ? 'bg-brandPrimary/70 text-bgMain cursor-wait scale-[0.98]'
+                            : 'bg-brandPrimary text-bgMain hover:bg-white hover:scale-[1.02] shadow-[0_0_20px_rgba(255,204,0,0.3)]'
                         }`}
                 >
-                    {isBudgetError ? 'INVALID CONFIGURATION' : 'START METRONOME'}
+                    {isProcessing && <Loader2 className="w-5 h-5 animate-spin" />}
+                    {isBudgetError ? 'INVALID CONFIGURATION' : isFormIncomplete ? 'FILL ALL FIELDS' : buttonText}
                 </button>
 
-                {/* Leyenda de Seguridad */}
                 <p className="text-center text-[11px] text-textMuted flex items-center justify-center gap-1.5">
                     <ShieldCheck className="w-3.5 h-3.5 text-green-500" />
-                    You can monitor or withdraw your position anytime from the Dashboard.
+                    You can monitor or withdraw your position anytime.
                 </p>
             </div>
         </div>
