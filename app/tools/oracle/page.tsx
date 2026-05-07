@@ -1,28 +1,68 @@
 "use client";
 
 import { useState } from 'react';
-import { Bot, Send, ArrowLeft } from 'lucide-react';
+import { Bot, Send, ArrowLeft, Loader2 } from 'lucide-react'; // Agregamos Loader2 para un icono de carga zen
 import Link from 'next/link';
 
+// 1. AGREGAMOS ESTO: Le decimos a TypeScript cómo es nuestro mensaje
+type Message = {
+    role: string;
+    text: string;
+    video?: string; // El signo de interrogación significa que es OPCIONAL
+};
+
 export default function OraclePage() {
-    const [messages, setMessages] = useState([
+    // 2. MODIFICAMOS ESTO: Le decimos al useState que use la regla <Message[]>
+    const [messages, setMessages] = useState<Message[]>([
         { role: 'ai', text: 'Hello, Builder. I am The Metronome Oracle. Ask me about market volatility, historical DCA performance, or optimal rhythm frequencies for your portfolio.' }
     ]);
     const [inputValue, setInputValue] = useState('');
+    const [isLoading, setIsLoading] = useState(false); // Estado para saber si el Oso está pensando
 
-    const handleSendMessage = (e: React.FormEvent) => {
+    const handleSendMessage = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!inputValue.trim()) return;
+        // Si no hay texto o ya está cargando, no hacemos nada
+        if (!inputValue.trim() || isLoading) return;
 
-        setMessages([...messages, { role: 'user', text: inputValue }]);
+        const userMessage = inputValue;
+
+        // 1. Agregamos el mensaje del usuario al chat
+        setMessages(prev => [...prev, { role: 'user', text: userMessage }]);
         setInputValue('');
+        setIsLoading(true); // Encendemos el estado de carga
 
-        setTimeout(() => {
+        try {
+            // 2. Llamamos a nuestra propia API (el backend simulado que armamos en el Paso 2)
+            const response = await fetch('/api/oracle', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ prompt: userMessage }),
+            });
+
+            const data = await response.json();
+
+            if (!response.ok) {
+                throw new Error(data.error || 'Error en la conexión');
+            }
+
+            // 3. Agregamos la respuesta de la IA al chat (¡Con video!)
             setMessages(prev => [...prev, {
                 role: 'ai',
-                text: "Based on current on-chain liquidity, an hourly DCA rhythm captures the most value during high-volatility phases. Consider pairing this with a 15% APY lending protocol for maximum capital efficiency."
+                text: data.text,
+                video: data.video // <- AGREGAMOS ESTO
             }]);
-        }, 1000);
+
+        } catch (error) {
+            console.error("Error consultando al Oráculo:", error);
+            setMessages(prev => [...prev, {
+                role: 'ai',
+                text: "Hubo una turbulencia en la red. El oráculo está meditando, intenta de nuevo."
+            }]);
+        } finally {
+            setIsLoading(false); // Apagamos el estado de carga
+        }
     };
 
     return (
@@ -53,10 +93,28 @@ export default function OraclePage() {
                                     ? 'bg-brandPrimary text-bgMain font-medium rounded-br-none'
                                     : 'bg-white/5 border border-white/10 text-textMuted rounded-bl-none'
                                     }`}>
+
+                                    {/* MAGIA: Si el mensaje trae un video, lo mostramos */}
+                                    {msg.video && (
+                                        <div className="mb-4 rounded-xl overflow-hidden border border-white/10">
+                                            <video src={msg.video} autoPlay loop muted controls className="w-full h-auto" />
+                                        </div>
+                                    )}
+
                                     {msg.text}
                                 </div>
                             </div>
                         ))}
+
+                        {/* Indicador visual de que el Oso está escribiendo/pensando */}
+                        {isLoading && (
+                            <div className="flex justify-start">
+                                <div className="bg-white/5 border border-white/10 text-textMuted p-4 rounded-2xl rounded-bl-none flex items-center gap-2">
+                                    <Loader2 className="w-4 h-4 animate-spin text-brandPrimary" />
+                                    <span className="text-sm italic">Consultando los astros financieros...</span>
+                                </div>
+                            </div>
+                        )}
                     </div>
 
                     <div className="p-6 border-t border-white/10 bg-bgSecondary rounded-b-2xl">
@@ -65,10 +123,15 @@ export default function OraclePage() {
                                 type="text"
                                 value={inputValue}
                                 onChange={(e) => setInputValue(e.target.value)}
+                                disabled={isLoading}
                                 placeholder="Ask about SOL volatility or optimal rhythms..."
-                                className="flex-1 bg-bgMain border border-white/10 rounded-xl px-5 py-4 text-base text-white focus:outline-none focus:border-brandPrimary transition-colors"
+                                className="flex-1 bg-bgMain border border-white/10 rounded-xl px-5 py-4 text-base text-white focus:outline-none focus:border-brandPrimary transition-colors disabled:opacity-50"
                             />
-                            <button type="submit" className="bg-brandPrimary hover:bg-[#0891b2] text-bgMain px-6 rounded-xl transition-colors font-bold flex items-center gap-2">
+                            <button
+                                type="submit"
+                                disabled={isLoading || !inputValue.trim()}
+                                className="bg-brandPrimary hover:bg-[#0891b2] text-bgMain px-6 rounded-xl transition-colors font-bold flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                            >
                                 Send <Send className="w-5 h-5" />
                             </button>
                         </form>
