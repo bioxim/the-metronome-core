@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Equal, TrendingUp, ShieldCheck, AlertCircle, Calculator, Brain, Loader2 } from "lucide-react";
+import { Equal, TrendingUp, ShieldCheck, AlertCircle, Calculator, Brain, Loader2, Bot, X } from "lucide-react";
 import { useConnection, useWallet } from '@solana/wallet-adapter-react';
 import { getProvider, getProgram } from '../utils/anchor';
 import { BN, web3 } from '@coral-xyz/anchor';
@@ -12,7 +12,8 @@ import Link from "next/link";
 const USDC_MINT = new PublicKey("HGVevYYdPNSDg8ottoHgfefmtgH3bdmLozX9XdavwkiT");
 
 export default function RhythmPanel() {
-    // 1. Estados Limpios (Inician vacíos)
+    const [showSetupVideo, setShowSetupVideo] = useState(false);
+
     const [mode, setMode] = useState<'fixed' | 'crescendo'>('fixed');
     const [totalBudget, setTotalBudget] = useState<number | ''>('');
     const [buyDropPercent, setBuyDropPercent] = useState<number | ''>('');
@@ -20,7 +21,6 @@ export default function RhythmPanel() {
     const [crescendoIncrease, setCrescendoIncrease] = useState<number | ''>('');
     const [takeProfitPercent, setTakeProfitPercent] = useState<number | ''>('');
 
-    // Estados de UI
     const [availableBalance, setAvailableBalance] = useState<number>(0);
     const [isProcessing, setIsProcessing] = useState(false);
     const [buttonText, setButtonText] = useState("START METRONOME");
@@ -28,19 +28,14 @@ export default function RhythmPanel() {
     const { connection } = useConnection();
     const wallet = useWallet();
 
-    // 2. Traer el balance REAL de USDC falso de tu Matrix Local
     useEffect(() => {
         const fetchBalance = async () => {
             if (wallet.publicKey) {
                 try {
-                    // Calculamos dónde está tu "caja fuerte" de USDC
                     const userTokenAccount = await getAssociatedTokenAddress(USDC_MINT, wallet.publicKey);
-                    // Leemos cuántos tokens hay adentro
                     const balance = await connection.getTokenAccountBalance(userTokenAccount);
                     setAvailableBalance(balance.value.uiAmount || 0);
                 } catch (error) {
-                    // Si tira error, es porque la cuenta de USDC no existe en tu billetera todavía
-                    console.log("No se encontró cuenta de USDC, balance es 0.");
                     setAvailableBalance(0);
                 }
             } else {
@@ -48,25 +43,20 @@ export default function RhythmPanel() {
             }
         };
 
-        // Hacemos que consulte apenas cargue, y también lo metemos en un intervalo
-        // para que se actualice cada 5 segundos (por si te depositás más plata)
         fetchBalance();
         const interval = setInterval(fetchBalance, 5000);
         return () => clearInterval(interval);
     }, [wallet.publicKey, connection]);
 
-    // 3. Conversión segura a números para la matemática
     const numBudget = Number(totalBudget) || 0;
     const numBuyAmount = Number(buyAmount) || 0;
     const numDrop = Number(buyDropPercent) || 0;
     const numProfit = Number(takeProfitPercent) || 0;
     const numIncrease = Number(crescendoIncrease) || 0;
 
-    // 4. Validaciones
     const isBudgetError = numBuyAmount > numBudget && numBuyAmount > 0;
     const isFormIncomplete = !totalBudget || !buyAmount || !buyDropPercent || !takeProfitPercent;
 
-    // 5. Matemática en tiempo real
     const projectedOnomeRewards = Math.floor(numBudget / 10);
     const maxEstimatedProfit = (numBudget * (numProfit / 100)).toFixed(2);
 
@@ -85,12 +75,10 @@ export default function RhythmPanel() {
         }
     }
 
-    // Función rápida para el botón MAX
     const handleMaxBudget = () => {
         setTotalBudget(Math.floor(availableBalance));
     };
 
-    // 6. El Disparador Web3
     const handleStartMetronome = async () => {
         if (!wallet.connected || !wallet.publicKey || isFormIncomplete) return;
 
@@ -160,16 +148,51 @@ export default function RhythmPanel() {
     };
 
     return (
-        <div className="bg-bgSecondary border border-white/10 rounded-xl p-6 shadow-2xl flex flex-col w-full">
+        <div className="bg-bgSecondary border border-white/10 rounded-xl p-6 shadow-2xl flex flex-col w-full relative">
 
-            {/* HEADER y HERRAMIENTAS */}
-            <div className="flex justify-between items-center mb-6">
-                <h2 className="text-xl font-extrabold text-white flex items-center gap-2">
-                    🎛️ Setup Rhythm
-                </h2>
+            {/* --- MODAL DE VIDEO DE KIRK --- */}
+            {showSetupVideo && (
+                <div className="absolute inset-0 z-30 bg-bgMain/90 backdrop-blur-md rounded-xl flex flex-col items-center justify-center p-4 animate-in fade-in zoom-in duration-200">
+                    <div className="bg-bgSecondary border border-white/10 p-2 rounded-2xl shadow-2xl relative w-full">
+                        <button
+                            onClick={() => setShowSetupVideo(false)}
+                            className="absolute -top-3 -right-3 bg-bgMain border border-white/10 rounded-full p-1.5 text-textMuted hover:text-white transition-colors z-40"
+                        >
+                            <X className="w-4 h-4" />
+                        </button>
+                        <video
+                            src="https://www.w3schools.com/html/mov_bbb.mp4"
+                            autoPlay
+                            loop
+                            controls
+                            className="w-full rounded-xl border border-white/10"
+                        />
+                        <div className="p-3 text-center">
+                            <p className="text-sm font-bold text-white">Rhythm Setup Guide</p>
+                            <p className="text-xs text-brandPrimary mt-1">Kirk explains step-by-step.</p>
+                        </div>
+                    </div>
+                </div>
+            )}
 
-                {/* Links a las herramientas */}
-                <div className="flex gap-4 text-xs font-medium">
+            {/* HEADER EN 2 LÍNEAS EXACTAS */}
+            <div className="mb-6">
+                {/* Línea 1: Título y botón Help */}
+                <div className="flex justify-between items-center mb-3">
+                    <h2 className="text-xl font-extrabold text-white flex items-center gap-2">
+                        🎛️ Setup Rhythm
+                    </h2>
+                    <button
+                        onClick={() => setShowSetupVideo(true)}
+                        className="bg-brandPrimary/10 text-brandPrimary hover:bg-brandPrimary hover:text-bgMain px-2.5 py-1.5 rounded-lg transition-all flex items-center gap-1.5"
+                    >
+                        <Bot className="w-3.5 h-3.5" />
+                        <span className="text-[10px] font-bold uppercase tracking-wider">Help</span>
+                    </button>
+                </div>
+
+                {/* Línea 2: Tools (Calc / Oracle) separadas por una línea sutil */}
+                <div className="flex gap-4 text-xs font-medium border-t border-white/5 pt-3">
                     <Link href="/tools/calculator" className="flex items-center gap-1.5 text-brandPrimary hover:text-white transition-colors">
                         <Calculator className="w-3.5 h-3.5" /> Yield Calc
                     </Link>
@@ -269,7 +292,7 @@ export default function RhythmPanel() {
                     />
                 </div>
 
-                {/* Feedback Box (Sólo si hay datos básicos) */}
+                {/* Feedback Box */}
                 <div className={`bg-bgMain p-4 rounded-lg border border-white/5 text-xs text-textMuted space-y-2 transition-opacity ${isFormIncomplete ? 'opacity-50' : 'opacity-100'}`}>
                     <div className="flex justify-between">
                         <span>Estimated Orders:</span>
