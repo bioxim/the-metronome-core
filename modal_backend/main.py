@@ -17,6 +17,7 @@ def generate_oracle_video(item: dict):
 
     prompt = item.get("prompt", "")
     
+    # 🛡️ GUARDRAILS
     prompt_lower = prompt.lower()
     is_valid = any(word in prompt_lower for word in ["sol", "usdc", "rhythm", "market", "volatility", "crypto"])
 
@@ -38,22 +39,14 @@ def generate_oracle_video(item: dict):
         
         texto_oraculo = "Analyzing Solana market conditions... Volatility is optimal. I recommend setting a 2% Buy Drop rhythm."
         
-        # 👇 ¡IMPORTANTE! Reemplazá estas URLs por enlaces públicos reales 👇
-        url_imagen_oso = "https://tu-sitio.com/oso.jpg" 
-        url_video_referencia = "https://tu-sitio.com/video-referencia.mp4"
+        # 👇 TU ENLACE INBLOQUEABLE. ¡CERO VIDEOS DE REFERENCIA! 👇
+        url_imagen_oso = "https://private-user-images.githubusercontent.com/24918827/589790528-7921897c-d5ea-4a22-9198-be70c5d012cf.png?jwt=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJnaXRodWIuY29tIiwiYXVkIjoicmF3LmdpdGh1YnVzZXJjb250ZW50LmNvbSIsImtleSI6ImtleTUiLCJleHAiOjE3NzgyNzMzMzEsIm5iZiI6MTc3ODI3MzAzMSwicGF0aCI6Ii8yNDkxODgyNy81ODk3OTA1MjgtNzkyMTg5N2MtZDVlYS00YTIyLTkxOTgtYmU3MGM1ZDAxMmNmLnBuZz9YLUFtei1BbGdvcml0aG09QVdTNC1ITUFDLVNIQTI1NiZYLUFtei1DcmVkZW50aWFsPUFLSUFWQ09EWUxTQTUzUFFLNFpBJTJGMjAyNjA1MDglMkZ1cy1lYXN0LTElMkZzMyUyRmF3czRfcmVxdWVzdCZYLUFtei1EYXRlPTIwMjYwNTA4VDIwNDM1MVomWC1BbXotRXhwaXJlcz0zMDAmWC1BbXotU2lnbmF0dXJlPTA5MTU1MTYzNTU5NzNkOTk0MzQ0YTg1NjA3NjQ4ZWM1MjhhYTRkNTBjM2FhNzU3NGY2YmE1YTY2OWZhYzEwZTkmWC1BbXotU2lnbmVkSGVhZGVycz1ob3N0JnJlc3BvbnNlLWNvbnRlbnQtdHlwZT1pbWFnZSUyRnBuZyJ9.4yWO7ODXpt843DXFDbPjWx8NodBZjT5YCq3U6V6VQnA" 
         
-        # Usamos el endpoint correcto para controlar personajes (Lip Sync)
-        task = client.character_performance.create(
-            model="act_two",
-            character={
-                "type": "image",
-                "uri": url_imagen_oso
-            },
-            reference={
-                "type": "video",
-                "uri": url_video_referencia
-            },
-            ratio="1280:720"
+        # Volvemos a usar el modelo de Imagen a Video (Solo necesita la foto y el texto)
+        task = client.image_to_video.create(
+            model="gen3a_turbo",
+            prompt_image=url_imagen_oso,
+            prompt_text=f"A hyper-realistic bear in a suit talking directly to the camera like a financial advisor. He is saying exactly this: {texto_oraculo}"
         )
 
         task_id = task.id
