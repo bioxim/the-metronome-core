@@ -1,37 +1,43 @@
 import { NextResponse } from 'next/server';
 
-export async function POST(request: Request) {
+export async function POST(req: Request) {
     try {
-        const { prompt } = await request.json();
+        const body = await req.json();
+        const { prompt } = body;
 
-        // ⏱️ Simulamos que Runway está cocinando el video (espera 3 segundos)
-        await new Promise((resolve) => setTimeout(resolve, 3000));
-
-        // 🛡️ GUARDRAILS (Reglas Estrictas)
-        const promptLower = prompt.toLowerCase();
-        // Verificamos si el usuario pregunta algo válido
-        const isValidQuery = promptLower.includes('sol') || promptLower.includes('usdc') || promptLower.includes('rhythm') || promptLower.includes('market');
-
-        let responseText = "";
-        // Usamos un video de prueba genérico de internet por ahora
-        let videoUrl = "https://www.w3schools.com/html/mov_bbb.mp4";
-
-        if (!isValidQuery) {
-            responseText = "My apologies. As the Oracle of The Metronome, my expertise is strictly limited to Solana, USDC, and DCA strategies within our protocol.";
-            // Acá el viernes le pasaremos un video de Kirk negando con la cabeza
-        } else {
-            responseText = "Analyzing Solana market conditions... Volatility is optimal. I recommend setting a 2% Buy Drop rhythm for safe accumulation today.";
-            // Acá el viernes le pasaremos un video de Kirk dando este reporte
+        // 1. Validamos que el usuario haya escrito algo
+        if (!prompt) {
+            return NextResponse.json({ error: "El prompt está vacío" }, { status: 400 });
         }
 
-        // Devolvemos el texto Y el link del video
-        return NextResponse.json({
-            text: responseText,
-            video: videoUrl
+        // 2. HACEMOS LA LLAMADA A TU CEREBRO EN MODAL 🧠🚀
+        const modalUrl = 'https://mariaximenacamino--metronome-oracle-backend-generate-ora-40c479.modal.run';
+
+        const modalResponse = await fetch(modalUrl, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            // Le pasamos a Modal exactamente lo que escribió el usuario
+            body: JSON.stringify({ prompt: prompt }),
         });
 
+        // 3. Si Modal tira error, lo capturamos
+        if (!modalResponse.ok) {
+            throw new Error(`Error en los servidores de Modal: ${modalResponse.statusText}`);
+        }
+
+        // 4. Recibimos el texto y el video de Runway (vía Modal)
+        const data = await modalResponse.json();
+
+        // 5. Se lo mandamos a tu frontend (page.tsx) para que lo muestre
+        return NextResponse.json(data);
+
     } catch (error) {
-        console.error(error);
-        return NextResponse.json({ error: 'Turbulencia en la Matrix' }, { status: 500 });
+        console.error("Error en la conexión con el Oráculo Web3:", error);
+        return NextResponse.json(
+            { error: "Hubo una turbulencia en la Matrix al conectar con el Oráculo." },
+            { status: 500 }
+        );
     }
 }
