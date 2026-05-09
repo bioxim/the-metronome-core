@@ -64,15 +64,15 @@ export default function RhythmChart() {
                         </button>
                         {/* Acá irá el video de Runway de Kirk explicando el gráfico */}
                         <video
-                            src="https://www.w3schools.com/html/mov_bbb.mp4"
+                            src="/chart-tutorial.mp4"
                             autoPlay
                             loop
                             controls
                             className="w-full rounded-xl"
                         />
                         <div className="p-3 text-center">
-                            <p className="text-sm font-medium text-white">How to read the market</p>
-                            <p className="text-xs text-brandPrimary mt-1">Kirk explains the volatility setup.</p>
+                            <p className="text-sm font-medium text-white">Master Market Volatility</p>
+                            <p className="text-xs text-brandPrimary mt-1">See how the Oracle automates your gains.</p>
                         </div>
                     </div>
                 </div>
