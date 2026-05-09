@@ -3,7 +3,7 @@ import os
 
 app = modal.App("metronome-oracle-backend")
 
-image = modal.Image.debian_slim().pip_install("runwayml", "fastapi[standard]")
+image = modal.Image.debian_slim().pip_install("runwayml", "fastapi[standard]", "requests")
 
 @app.function(
     image=image, 
@@ -12,62 +12,97 @@ image = modal.Image.debian_slim().pip_install("runwayml", "fastapi[standard]")
 )
 @modal.fastapi_endpoint(method="POST")
 def generate_oracle_video(item: dict):
-    from runwayml import RunwayML
     import time
+    import requests
+    import os
 
     prompt = item.get("prompt", "")
-    
-    # 🛡️ GUARDRAILS
-    prompt_lower = prompt.lower()
-    is_valid = any(word in prompt_lower for word in ["sol", "usdc", "rhythm", "market", "volatility", "crypto"])
-
-    if not is_valid:
-        return {
-            "text": "My apologies. As the Oracle of The Metronome, my expertise is strictly limited to Solana, USDC, and DCA strategies.",
-            "video": "https://www.w3schools.com/html/mov_bbb.mp4" 
-        }
-
     runway_key = os.environ.get("RUNWAY_API_KEY")
+
     if not runway_key:
-        return {
-            "text": "⚠️ ERROR: Sigo sin encontrar la llave. ¡Revisemos la bóveda!",
-            "video": None
+        return {"text": "⚠️ ERROR: Llave de Runway no encontrada en la bóveda.", "video": None}
+
+    # ==========================================
+    # 1. 🛡️ GUARDRAILS
+    # ==========================================
+    prompt_lower = prompt.lower()
+    keywords = ["sol", "solana", "usdc", "rhythm", "market", "volatility", "crypto", "dca", "metronome", "buy", "sell", "yield", "hello", "hi"]
+    is_valid = any(word in prompt_lower for word in keywords)
+
+    # ==========================================
+    # 2. 🧠 EL CEREBRO (Respuestas Exactas)
+    # ==========================================
+    if not is_valid:
+        texto_oraculo = "My apologies. As the Oracle of The Metronome, my vision is strictly limited to Solana, USDC, and automated accumulation strategies. I cannot answer that."
+    else:
+        # 1. Respuesta para: "Analyze Solana volatility"
+        if "analyze" in prompt_lower or "volatility" in prompt_lower:
+            texto_oraculo = "Solana's volatility is your greatest asset. While emotional traders panic, The Metronome reads the market noise and executes precise buy orders at the bottom of the dip."
+        
+        # 2. Respuesta para: "What is the optimal DCA rhythm?"
+        elif "optimal" in prompt_lower or "rhythm" in prompt_lower or "dca" in prompt_lower:
+            texto_oraculo = "The optimal rhythm adapts to the market cycle. For current Solana conditions, I recommend setting a three percent Buy Drop to accumulate, and a five percent Sell Pump to secure profits."
+        
+        # 3. Respuesta para: "Explain The Metronome"
+        elif "explain" in prompt_lower or "metronome" in prompt_lower:
+            texto_oraculo = "The Metronome is an elite, fully automated accumulation protocol built on Solana. You set your rhythm, fund your vault, and our smart contracts handle the rest, buying dips and selling pumps twenty four seven."
+        
+        # Respuesta comodín por si escriben otra cosa válida
+        else:
+            texto_oraculo = "The on-chain data aligns with your query. Stay disciplined, trust the system, and let The Metronome automate your gains."
+    # ==========================================
+    # 3. 🎬 CONEXIÓN CON RUNWAY (Avatar Videos)
+    # ==========================================
+    # Usamos la URL correcta de DEV y el endpoint de AVATAR_VIDEOS
+    url = "https://api.dev.runwayml.com/v1/avatar_videos" 
+    headers = {
+        "Authorization": f"Bearer {runway_key}",
+        "Content-Type": "application/json",
+        "X-Runway-Version": "2024-11-06"
+    }
+
+    # Esta es la estructura exacta que pide la documentación para Custom Avatars
+    payload = {
+        "model": "gwm1_avatars",
+        "avatar": {
+            "type": "custom",
+            "avatarId": "bc7d4c56-0b13-47a3-82c9-38ade18cd3ef"
+        },
+        "speech": {
+            "type": "text",
+            "text": texto_oraculo
         }
+    }
 
     try:
-        client = RunwayML(api_key=runway_key)
+        response = requests.post(url, headers=headers, json=payload)
+        response_data = response.json()
         
-        texto_oraculo = "Analyzing Solana market conditions... Volatility is optimal. I recommend setting a 2% Buy Drop rhythm."
-        
-        # 👇 TU ENLACE INBLOQUEABLE. ¡CERO VIDEOS DE REFERENCIA! 👇
-        url_imagen_oso = "https://private-user-images.githubusercontent.com/24918827/589976587-96903815-4368-4737-b850-e4d639c7308d.png?jwt=eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJpc3MiOiJnaXRodWIuY29tIiwiYXVkIjoicmF3LmdpdGh1YnVzZXJjb250ZW50LmNvbSIsImtleSI6ImtleTUiLCJleHAiOjE3NzgzMzQwNjksIm5iZiI6MTc3ODMzMzc2OSwicGF0aCI6Ii8yNDkxODgyNy81ODk5NzY1ODctOTY5MDM4MTUtNDM2OC00NzM3LWI4NTAtZTRkNjM5YzczMDhkLnBuZz9YLUFtei1BbGdvcml0aG09QVdTNC1ITUFDLVNIQTI1NiZYLUFtei1DcmVkZW50aWFsPUFLSUFWQ09EWUxTQTUzUFFLNFpBJTJGMjAyNjA1MDklMkZ1cy1lYXN0LTElMkZzMyUyRmF3czRfcmVxdWVzdCZYLUFtei1EYXRlPTIwMjYwNTA5VDEzMzYwOVomWC1BbXotRXhwaXJlcz0zMDAmWC1BbXotU2lnbmF0dXJlPWQ5ZDRiY2Y1Nzc4ODU2YjdhMzZkYzJhNGYxNzNiYmMxY2RjNmQ2NDBjNTIwN2RjMzhjYTQ0OTU2Njk2NGYyNWImWC1BbXotU2lnbmVkSGVhZGVycz1ob3N0JnJlc3BvbnNlLWNvbnRlbnQtdHlwZT1pbWFnZSUyRnBuZyJ9.vxtKJynynKm-dIs0RwYsGFV1mvJvJVMjISKZJSj3NTE" 
-        
-        # Volvemos a usar el modelo de Imagen a Video (Solo necesita la foto y el texto)
-        task = client.image_to_video.create(
-            model="gen3a_turbo",
-            prompt_image=url_imagen_oso,
-            prompt_text=f"A hyper-realistic bear in a suit talking directly to the camera like a financial advisor. He is saying exactly this: {texto_oraculo}"
-        )
+        if response.status_code != 200:
+            return {"text": f"⚠️ Error de Runway: {response_data}", "video": None}
 
-        task_id = task.id
+        task_id = response_data.get("id")
+
         video_url = ""
-        
+        # Polling: consultamos el estado de la tarea en la URL de dev
+        status_url = f"https://api.dev.runwayml.com/v1/tasks/{task_id}"
+
         while True:
-            task_info = client.tasks.retrieve(task_id)
+            status_response = requests.get(status_url, headers=headers).json()
+            estado = status_response.get("status")
             
-            if task_info.status == "SUCCEEDED":
-                if isinstance(task_info.output, list) and len(task_info.output) > 0:
-                    video_url = task_info.output[0]
+            if estado == "SUCCEEDED":
+                outputs = status_response.get("output", [])
+                if isinstance(outputs, list) and len(outputs) > 0:
+                    video_url = outputs[0]
                 else:
-                    video_url = str(task_info.output)
+                    video_url = str(outputs)
                 break
-            elif task_info.status in ["FAILED", "CANCELLED"]:
-                return {
-                    "text": f"⚠️ Runway falló al generar el video. Estado: {task_info.status}",
-                    "video": None
-                }
             
-            time.sleep(3)
+            elif estado in ["FAILED", "CANCELLED"]:
+                return {"text": f"⚠️ Runway falló al animar el avatar. Estado: {estado}", "video": None}
+            
+            time.sleep(3) 
         
         return {
             "text": texto_oraculo,
