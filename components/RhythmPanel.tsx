@@ -161,7 +161,7 @@ export default function RhythmPanel() {
                             <X className="w-4 h-4" />
                         </button>
                         <video
-                            src="https://www.w3schools.com/html/mov_bbb.mp4"
+                            src="/setting-a-rythm.mp4"
                             autoPlay
                             loop
                             controls
