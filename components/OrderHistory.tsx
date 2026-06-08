@@ -9,11 +9,16 @@ import { getAssociatedTokenAddress } from '@solana/spl-token';
 import { web3 } from '@coral-xyz/anchor';
 
 const USDC_MINT = new PublicKey("HGVevYYdPNSDg8ottoHgfefmtgH3bdmLozX9XdavwkiT");
+// El ID oficial de Pyth Network para el par Crypto.SOL/USD en Devnet/Mainnet
+const PYTH_SOL_FEED_ID = "0xef0d8b6fda2ceba41da15d4095d1da392a0d2f8ed0c6c7bc0f4cfac8c280b56d";
 const PYTH_SOL_USD = new PublicKey("H6ARHf6YXhGYeQfUzQNGk6rDNnLBQKrenN712K4AQJEG");
 
 export default function OrderHistory() {
     const wallet = useAnchorWallet();
     const { connection } = useConnection();
+
+    // 👉 AGREGÁ ESTA LÍNEA ACÁ: Estado para el precio en vivo de Pyth
+    const [liveSolPrice, setLiveSolPrice] = useState<string>('...');
 
     const [realPositions, setRealPositions] = useState<any[]>([]);
     const [selectedPositionId, setSelectedPositionId] = useState<string | null>(null);
@@ -44,6 +49,30 @@ export default function OrderHistory() {
         const interval = setInterval(fetchBalances, 5000);
         return () => clearInterval(interval);
     }, [wallet, connection]);
+
+    // 🔥 NUEVO: Oráculo en vivo de Pyth Network (Hermes)
+    useEffect(() => {
+        const fetchPythPrice = async () => {
+            try {
+                const response = await fetch(`https://hermes.pyth.network/v2/updates/price/latest?ids[]=${PYTH_SOL_FEED_ID}`);
+                const data = await response.json();
+
+                if (data && data.parsed && data.parsed.length > 0) {
+                    const priceData = data.parsed[0].price;
+                    // Pyth manda el precio crudo y el exponente, calculamos el precio real:
+                    const actualPrice = (Number(priceData.price) * Math.pow(10, priceData.expo)).toFixed(2);
+                    setLiveSolPrice(actualPrice);
+                }
+            } catch (err) {
+                console.error("Pyth Oracle Error:", err);
+            }
+        };
+
+        fetchPythPrice(); // Primera llamada inmediata
+        const intervalId = setInterval(fetchPythPrice, 3000); // Latidos cada 3 segundos
+
+        return () => clearInterval(intervalId);
+    }, []);
 
     const walletHoldings = [
         { asset: 'SOL', balance: solBalance, icon: '/sol-icon.png' },
@@ -168,16 +197,22 @@ export default function OrderHistory() {
 
             {/* BOTÓN DEL ORÁCULO Y ESTADÍSTICAS */}
             <div className="flex flex-col gap-4">
-                {/* Botón alineado a la derecha, sutil y elegante */}
+                {/* 🔮 PYTH ORACLE LIVE FEED */}
                 <div className="flex justify-end">
-                    <button
-                        onClick={handleTriggerOracle}
-                        disabled={isChecking || demoModeTriggered || realPositions.length === 0}
-                        className={`flex items-center gap-2 text-xs font-bold px-4 py-2.5 rounded-lg border transition-all ${demoModeTriggered ? 'bg-green-500/10 text-green-400 border-green-500/20' : 'bg-brandPrimary/10 hover:bg-brandPrimary/20 text-brandPrimary border-brandPrimary/20'}`}
-                    >
-                        <Zap className={`w-3.5 h-3.5 ${isChecking ? 'animate-pulse' : ''}`} />
-                        {isChecking ? 'Analyzing Market...' : demoModeTriggered ? 'Grid Executed!' : 'Trigger AI Analyst (Dev)'}
-                    </button>
+                    <div className="flex items-center gap-3 bg-bgSecondary border border-white/10 px-4 py-2 rounded-lg shadow-xl">
+                        <div className="flex items-center gap-2">
+                            {/* Punto titilando estilo Matrix */}
+                            <span className="relative flex h-3 w-3">
+                                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-purple-400 opacity-75"></span>
+                                <span className="relative inline-flex rounded-full h-3 w-3 bg-purple-500"></span>
+                            </span>
+                            <span className="text-[10px] text-purple-400 font-bold uppercase tracking-wider">Pyth Oracle Live</span>
+                        </div>
+                        <div className="h-4 w-[1px] bg-white/10"></div>
+                        <div className="text-sm font-mono font-bold text-white">
+                            SOL/USD: <span className="text-green-400">${liveSolPrice}</span>
+                        </div>
+                    </div>
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
