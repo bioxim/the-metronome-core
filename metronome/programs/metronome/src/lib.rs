@@ -1,8 +1,8 @@
 use anchor_lang::prelude::*;
 use anchor_spl::token::{self, Token, TokenAccount, Transfer};
-use pyth_sdk_solana::load_price_feed_from_account_info; // 👈 Mantenemos Pyth
+use pyth_sdk_solana::state::SolanaPriceAccount; // 👈 Mantenemos Pyth
 
-declare_id!("EiysWuzqfv7eg7YBiBos7pKYEDQjLCyKvYnjPnD8GiLU");
+declare_id!("HgxDKPcdz9otrjhoDcn6YdJr9HJVVYxcA41doaE1i8Vk");
 
 #[program]
 pub mod metronome {
@@ -42,7 +42,7 @@ pub mod metronome {
 
         // 1. Cargamos la cuenta del oráculo de Pyth
         let price_account_info = &ctx.accounts.pyth_oracle;
-        let price_feed = load_price_feed_from_account_info(price_account_info).unwrap();
+        let price_feed = SolanaPriceAccount::account_info_to_feed(price_account_info).unwrap();
         
         // 2. Obtenemos el precio actual de Solana (Pyth lo devuelve con 8 ceros extra)
         let current_price_data = price_feed.get_price_unchecked();

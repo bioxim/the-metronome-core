@@ -1,5 +1,5 @@
 {
-  "address": "EiysWuzqfv7eg7YBiBos7pKYEDQjLCyKvYnjPnD8GiLU",
+  "address": "HgxDKPcdz9otrjhoDcn6YdJr9HJVVYxcA41doaE1i8Vk",
   "metadata": {
     "name": "metronome",
     "version": "0.1.0",
@@ -25,10 +25,7 @@
           "writable": true
         },
         {
-          "name": "pyth_oracle",
-          "docs": [
-            "Le ponemos CHECK porque nosotros confiamos ciegamente en la dirección de Pyth."
-          ]
+          "name": "pyth_oracle"
         }
       ],
       "args": []
