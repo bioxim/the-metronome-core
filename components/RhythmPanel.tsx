@@ -9,7 +9,7 @@ import { PublicKey, Transaction } from '@solana/web3.js';
 import { TOKEN_PROGRAM_ID, getAssociatedTokenAddress, createAssociatedTokenAccountIdempotentInstruction } from '@solana/spl-token';
 import Link from "next/link";
 
-const USDC_MINT = new PublicKey("HGVevYYdPNSDg8ottoHgfefmtgH3bdmLozX9XdavwkiT");
+const USDC_MINT = new PublicKey("3eFucVFPDNZryAKFykwUMkbvZevBUrdAZBgyT5REBjjc");
 
 interface RhythmPanelProps {
     selectedAsset: string;
