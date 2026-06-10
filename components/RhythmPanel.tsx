@@ -11,7 +11,12 @@ import Link from "next/link";
 
 const USDC_MINT = new PublicKey("HGVevYYdPNSDg8ottoHgfefmtgH3bdmLozX9XdavwkiT");
 
-export default function RhythmPanel() {
+interface RhythmPanelProps {
+    selectedAsset: string;
+    setSelectedAsset: (asset: string) => void;
+}
+
+export default function RhythmPanel({ selectedAsset, setSelectedAsset }: RhythmPanelProps) {
     const [showSetupVideo, setShowSetupVideo] = useState(false);
 
     const [mode, setMode] = useState<'fixed' | 'crescendo'>('fixed');
@@ -81,12 +86,11 @@ export default function RhythmPanel() {
 
     const handleStartMetronome = async () => {
         if (!wallet.connected || !wallet.publicKey || isFormIncomplete) return;
-
         setIsProcessing(true);
         setButtonText("Waking up the Bear... 🐻");
 
         try {
-            const provider = getProvider(wallet, connection);
+            const provider = getProvider(wallet as any, connection);
             const program = getProgram(provider);
             const rhythmId = new BN(Date.now());
 
@@ -123,12 +127,7 @@ export default function RhythmPanel() {
 
             transaction.add(initInstruction);
 
-            const PYTH_SOL_USD = new PublicKey("H6ARHf6YXhGYeQfUzQNGk6rDNnLBQKrenN712K4AQJEG");
-            const checkInstruction = await program.methods.checkAndExecute()
-                .accounts({ rhythmAccount: rhythmPDA, pythOracle: PYTH_SOL_USD })
-                .instruction();
-
-            transaction.add(checkInstruction);
+            // Acá pondremos el Oráculo de verdad cuando integremos la lógica final de ejecución
 
             const signature = await provider.sendAndConfirm(transaction);
             console.log("¡Éxito! Firma:", signature);
@@ -137,7 +136,7 @@ export default function RhythmPanel() {
             setTimeout(() => {
                 setButtonText("START METRONOME");
                 setIsProcessing(false);
-                setTotalBudget(''); setBuyAmount(''); setBuyDropPercent(''); setTakeProfitPercent('');
+                setTotalBudget(''); setBuyAmount(''); setBuyDropPercent(''); setTakeProfitPercent(''); setCrescendoIncrease('');
             }, 3000);
 
         } catch (error) {
@@ -154,19 +153,10 @@ export default function RhythmPanel() {
             {showSetupVideo && (
                 <div className="absolute inset-0 z-30 bg-bgMain/90 backdrop-blur-md rounded-xl flex flex-col items-center justify-center p-4 animate-in fade-in zoom-in duration-200">
                     <div className="bg-bgSecondary border border-white/10 p-2 rounded-2xl shadow-2xl relative w-full">
-                        <button
-                            onClick={() => setShowSetupVideo(false)}
-                            className="absolute -top-3 -right-3 bg-bgMain border border-white/10 rounded-full p-1.5 text-textMuted hover:text-white transition-colors z-40"
-                        >
+                        <button onClick={() => setShowSetupVideo(false)} className="absolute -top-3 -right-3 bg-bgMain border border-white/10 rounded-full p-1.5 text-textMuted hover:text-white transition-colors z-40">
                             <X className="w-4 h-4" />
                         </button>
-                        <video
-                            src="/setting-a-rythm.mp4"
-                            autoPlay
-                            loop
-                            controls
-                            className="w-full rounded-xl border border-white/10"
-                        />
+                        <video src="/setting-a-rythm.mp4" autoPlay loop controls className="w-full rounded-xl border border-white/10" />
                         <div className="p-3 text-center">
                             <p className="text-sm font-bold text-white">Rhythm Setup Guide</p>
                             <p className="text-xs text-brandPrimary mt-1">Kirk explains step-by-step.</p>
@@ -177,21 +167,16 @@ export default function RhythmPanel() {
 
             {/* HEADER EN 2 LÍNEAS EXACTAS */}
             <div className="mb-6">
-                {/* Línea 1: Título y botón Help */}
                 <div className="flex justify-between items-center mb-3">
                     <h2 className="text-xl font-extrabold text-white flex items-center gap-2">
                         🎛️ Setup Rhythm
                     </h2>
-                    <button
-                        onClick={() => setShowSetupVideo(true)}
-                        className="bg-brandPrimary/10 text-brandPrimary hover:bg-brandPrimary hover:text-bgMain px-2.5 py-1.5 rounded-lg transition-all flex items-center gap-1.5"
-                    >
+                    <button onClick={() => setShowSetupVideo(true)} className="bg-brandPrimary/10 text-brandPrimary hover:bg-brandPrimary hover:text-bgMain px-2.5 py-1.5 rounded-lg transition-all flex items-center gap-1.5">
                         <Bot className="w-3.5 h-3.5" />
                         <span className="text-[10px] font-bold uppercase tracking-wider">Help</span>
                     </button>
                 </div>
 
-                {/* Línea 2: Tools (Calc / Oracle) separadas por una línea sutil */}
                 <div className="flex gap-4 text-xs font-medium border-t border-white/5 pt-3">
                     <Link href="/tools/calculator" className="flex items-center gap-1.5 text-brandPrimary hover:text-white transition-colors">
                         <Calculator className="w-3.5 h-3.5" /> Yield Calc
@@ -200,20 +185,26 @@ export default function RhythmPanel() {
                         <Brain className="w-3.5 h-3.5" /> AI Oracle
                     </Link>
                 </div>
+
+                {/* NUEVO: SELECCIÓN DE PAR (SOL o BTC) INYECTADO SIN ROMPER */}
+                <div className="mt-4 pt-3 border-t border-white/5">
+                    <div className="flex bg-bgMain rounded-lg p-1 border border-white/5 w-full">
+                        <button onClick={() => setSelectedAsset('SOL')} className={`flex-1 flex justify-center items-center gap-2 px-4 py-2 text-xs font-bold rounded-md transition-all ${selectedAsset === 'SOL' ? 'bg-brandPrimary text-bgMain shadow' : 'text-textMuted hover:text-white'}`}>
+                            <img src="/sol-icon.png" className="w-4 h-4" alt="SOL" /> SOL
+                        </button>
+                        <button onClick={() => setSelectedAsset('BTC')} className={`flex-1 flex justify-center items-center gap-2 px-4 py-2 text-xs font-bold rounded-md transition-all ${selectedAsset === 'BTC' ? 'bg-orange-500 text-bgMain shadow' : 'text-textMuted hover:text-white'}`}>
+                            <img src="/bitcoin-icon.png" className="w-4 h-4 rounded-full" alt="BTC" /> cbBTC
+                        </button>
+                    </div>
+                </div>
             </div>
 
             {/* Solapas de Modo */}
             <div className="flex bg-bgMain rounded-lg p-1 border border-white/5 mb-6 w-fit">
-                <button
-                    onClick={() => setMode('fixed')}
-                    className={`flex items-center gap-1.5 px-4 py-2 text-xs font-bold rounded-md transition-all ${mode === 'fixed' ? 'bg-white/10 text-brandPrimary shadow' : 'text-textMuted hover:text-white'}`}
-                >
+                <button onClick={() => setMode('fixed')} className={`flex items-center gap-1.5 px-4 py-2 text-xs font-bold rounded-md transition-all ${mode === 'fixed' ? 'bg-white/10 text-brandPrimary shadow' : 'text-textMuted hover:text-white'}`}>
                     <Equal className="w-3.5 h-3.5" /> Fixed
                 </button>
-                <button
-                    onClick={() => setMode('crescendo')}
-                    className={`flex items-center gap-1.5 px-4 py-2 text-xs font-bold rounded-md transition-all ${mode === 'crescendo' ? 'bg-white/10 text-purple-400 shadow' : 'text-textMuted hover:text-white'}`}
-                >
+                <button onClick={() => setMode('crescendo')} className={`flex items-center gap-1.5 px-4 py-2 text-xs font-bold rounded-md transition-all ${mode === 'crescendo' ? 'bg-white/10 text-purple-400 shadow' : 'text-textMuted hover:text-white'}`}>
                     <TrendingUp className="w-3.5 h-3.5" /> Crescendo
                 </button>
             </div>
@@ -223,25 +214,11 @@ export default function RhythmPanel() {
                 <div>
                     <div className="flex justify-between items-end mb-2">
                         <label className="text-[10px] text-textMuted font-bold uppercase block">Total Budget (USDC)</label>
-                        <span className="text-[10px] text-brandPrimary/70 italic font-light">
-                            Available: {availableBalance.toLocaleString()} USDC
-                        </span>
+                        <span className="text-[10px] text-brandPrimary/70 italic font-light">Available: {availableBalance.toLocaleString()} USDC</span>
                     </div>
                     <div className="relative">
-                        <input
-                            type="number"
-                            min="0"
-                            placeholder="e.g. 500"
-                            value={totalBudget}
-                            onChange={(e) => setTotalBudget(e.target.value ? Number(e.target.value) : '')}
-                            className="w-full bg-bgMain border border-white/5 rounded-lg p-3 pr-16 text-lg font-mono text-white placeholder:text-white/20 focus:border-brandPrimary focus:outline-none transition-colors"
-                        />
-                        <button
-                            onClick={handleMaxBudget}
-                            className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] font-bold bg-brandPrimary/10 text-brandPrimary px-2 py-1 rounded hover:bg-brandPrimary/20 transition-colors"
-                        >
-                            MAX
-                        </button>
+                        <input type="number" min="0" placeholder="e.g. 500" value={totalBudget} onChange={(e) => setTotalBudget(e.target.value ? Number(e.target.value) : '')} className="w-full bg-bgMain border border-white/5 rounded-lg p-3 pr-16 text-lg font-mono text-white placeholder:text-white/20 focus:border-brandPrimary focus:outline-none transition-colors" />
+                        <button onClick={handleMaxBudget} className="absolute right-2 top-1/2 -translate-y-1/2 text-[10px] font-bold bg-brandPrimary/10 text-brandPrimary px-2 py-1 rounded hover:bg-brandPrimary/20 transition-colors">MAX</button>
                     </div>
                 </div>
 
@@ -249,28 +226,21 @@ export default function RhythmPanel() {
                 <div className="grid grid-cols-2 gap-4">
                     <div>
                         <label className="text-[10px] text-textMuted font-bold uppercase block mb-2">Buy Drop (%)</label>
-                        <input
-                            type="number"
-                            step="0.1"
-                            min="0"
-                            placeholder="e.g. 2.5"
-                            value={buyDropPercent}
-                            onChange={(e) => setBuyDropPercent(e.target.value ? Number(e.target.value) : '')}
-                            className="w-full bg-bgMain border border-white/5 rounded-lg p-3 text-lg font-mono text-brandPrimary placeholder:text-brandPrimary/20 focus:border-brandPrimary focus:outline-none transition-colors"
-                        />
+                        <input type="number" step="0.1" min="0" placeholder="e.g. 2.5" value={buyDropPercent} onChange={(e) => setBuyDropPercent(e.target.value ? Number(e.target.value) : '')} className="w-full bg-bgMain border border-white/5 rounded-lg p-3 text-lg font-mono text-brandPrimary placeholder:text-brandPrimary/20 focus:border-brandPrimary focus:outline-none transition-colors" />
                     </div>
                     <div>
                         <label className="text-[10px] text-textMuted font-bold uppercase block mb-2">Base Buy (USDC)</label>
-                        <input
-                            type="number"
-                            min="0"
-                            placeholder="e.g. 50"
-                            value={buyAmount}
-                            onChange={(e) => setBuyAmount(e.target.value ? Number(e.target.value) : '')}
-                            className={`w-full bg-bgMain border rounded-lg p-3 text-lg font-mono text-white placeholder:text-white/20 focus:outline-none transition-colors ${isBudgetError ? 'border-red-500 text-red-400 focus:border-red-500' : 'border-white/5 focus:border-brandPrimary'}`}
-                        />
+                        <input type="number" min="0" placeholder="e.g. 50" value={buyAmount} onChange={(e) => setBuyAmount(e.target.value ? Number(e.target.value) : '')} className={`w-full bg-bgMain border rounded-lg p-3 text-lg font-mono text-white placeholder:text-white/20 focus:outline-none transition-colors ${isBudgetError ? 'border-red-500 text-red-400 focus:border-red-500' : 'border-white/5 focus:border-brandPrimary'}`} />
                     </div>
                 </div>
+
+                {/* Lógica Crescendo Restaurada */}
+                {mode === 'crescendo' && (
+                    <div className="animate-in fade-in slide-in-from-top-2 duration-300">
+                        <label className="text-[10px] text-textMuted font-bold uppercase block mb-2 text-purple-400">Increase per step (USDC)</label>
+                        <input type="number" min="0" placeholder="e.g. 10" value={crescendoIncrease} onChange={(e) => setCrescendoIncrease(e.target.value ? Number(e.target.value) : '')} className="w-full bg-bgMain border border-purple-500/30 rounded-lg p-3 text-lg font-mono text-purple-400 placeholder:text-purple-400/30 focus:border-purple-500 focus:outline-none transition-colors" />
+                    </div>
+                )}
 
                 {isBudgetError && (
                     <p className="text-red-400 text-[11px] flex items-center gap-1 mt-[-10px] font-bold">
@@ -281,36 +251,22 @@ export default function RhythmPanel() {
                 {/* Estrategia de Venta */}
                 <div>
                     <label className="text-[10px] text-textMuted font-bold uppercase block mb-2">Exit at ROI (%)</label>
-                    <input
-                        type="number"
-                        step="0.1"
-                        min="0"
-                        placeholder="e.g. 15.0"
-                        value={takeProfitPercent}
-                        onChange={(e) => setTakeProfitPercent(e.target.value ? Number(e.target.value) : '')}
-                        className="w-full bg-bgMain border border-white/5 rounded-lg p-3 text-lg font-mono text-green-400 placeholder:text-green-400/20 focus:border-green-400 focus:outline-none transition-colors"
-                    />
+                    <input type="number" step="0.1" min="0" placeholder="e.g. 15.0" value={takeProfitPercent} onChange={(e) => setTakeProfitPercent(e.target.value ? Number(e.target.value) : '')} className="w-full bg-bgMain border border-white/5 rounded-lg p-3 text-lg font-mono text-green-400 placeholder:text-green-400/20 focus:border-green-400 focus:outline-none transition-colors" />
                 </div>
 
-                {/* Feedback Box */}
+                {/* Feedback Box Original Restaurado */}
                 <div className={`bg-bgMain p-4 rounded-lg border border-white/5 text-xs text-textMuted space-y-2 transition-opacity ${isFormIncomplete ? 'opacity-50' : 'opacity-100'}`}>
                     <div className="flex justify-between">
                         <span>Estimated Orders:</span>
-                        <span className={`font-mono font-bold ${maxPurchases === 0 ? 'text-textMuted' : 'text-white'}`}>
-                            {maxPurchases || '-'}
-                        </span>
+                        <span className={`font-mono font-bold ${maxPurchases === 0 ? 'text-textMuted' : 'text-white'}`}>{maxPurchases || '-'}</span>
                     </div>
                     <div className="flex justify-between items-center border-b border-white/10 pb-2">
                         <span>Target Profit:</span>
-                        <span className="font-mono text-green-400 font-bold text-sm">
-                            {numProfit > 0 ? `+$${maxEstimatedProfit} USDC` : '-'}
-                        </span>
+                        <span className="font-mono text-green-400 font-bold text-sm">{numProfit > 0 ? `+$${maxEstimatedProfit} USDC` : '-'}</span>
                     </div>
                     <div className="flex justify-between pt-1">
                         <span>Projected Rewards:</span>
-                        <span className="font-mono text-brandPrimary font-bold">
-                            {numBudget > 0 ? `+${projectedOnomeRewards} $ONOME` : '-'}
-                        </span>
+                        <span className="font-mono text-brandPrimary font-bold">{numBudget > 0 ? `+${projectedOnomeRewards} $ONOME` : '-'}</span>
                     </div>
                 </div>
 
@@ -318,12 +274,7 @@ export default function RhythmPanel() {
                 <button
                     onClick={handleStartMetronome}
                     disabled={isBudgetError || isFormIncomplete || isProcessing}
-                    className={`w-full font-extrabold py-4 px-6 rounded-lg transition-all transform flex items-center justify-center gap-2 ${isBudgetError || isFormIncomplete
-                        ? 'bg-white/5 text-textMuted cursor-not-allowed'
-                        : isProcessing
-                            ? 'bg-brandPrimary/70 text-bgMain cursor-wait scale-[0.98]'
-                            : 'bg-brandPrimary text-bgMain hover:bg-white hover:scale-[1.02] shadow-[0_0_20px_rgba(255,204,0,0.3)]'
-                        }`}
+                    className={`w-full font-extrabold py-4 px-6 rounded-lg transition-all transform flex items-center justify-center gap-2 ${isBudgetError || isFormIncomplete ? 'bg-white/5 text-textMuted cursor-not-allowed' : isProcessing ? 'bg-brandPrimary/70 text-bgMain cursor-wait scale-[0.98]' : 'bg-brandPrimary text-bgMain hover:bg-white hover:scale-[1.02] shadow-[0_0_20px_rgba(255,204,0,0.3)]'}`}
                 >
                     {isProcessing && <Loader2 className="w-5 h-5 animate-spin" />}
                     {isBudgetError ? 'INVALID CONFIGURATION' : isFormIncomplete ? 'FILL ALL FIELDS' : buttonText}

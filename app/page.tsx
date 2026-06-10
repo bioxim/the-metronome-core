@@ -1,25 +1,25 @@
-import RhythmChart from "@/components/RhythmChart";
-import RhythmPanel from "@/components/RhythmPanel";
+"use client";
+import { useState } from 'react';
+import RhythmChart from '@/components/RhythmChart';
+import RhythmPanel from '@/components/RhythmPanel';
 
-export default function Home() {
+export default function DashboardPage() {
+  // 🧠 Este es el "cerebro" que une al Panel con el Gráfico
+  const [selectedAsset, setSelectedAsset] = useState('SOL');
+
   return (
-    <main className="min-h-screen flex flex-col items-center">
-
-      {/* Contenedor Principal (Grid de 3 columnas en desktop) */}
-      <div className="w-full max-w-7xl px-4 xl:px-0 grid grid-cols-1 lg:grid-cols-3 gap-8 pb-12">
-
-        {/* LADO IZQUIERDO: El Gráfico (Ocupa 2 de las 3 columnas) */}
-        <div className="lg:col-span-2 bg-bgSecondary border border-white/10 rounded-xl p-6 min-h-[500px] flex flex-col shadow-xl">
-          <RhythmChart />
+    // 👇 Le dimos aire (padding) y un ancho máximo centrado para que no toque los bordes
+    <div className="w-full max-w-7xl mx-auto p-4 md:p-8">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <div className="lg:col-span-2">
+          {/* Le pasamos la moneda elegida al gráfico para que cambie de canal */}
+          <RhythmChart selectedAsset={selectedAsset} />
         </div>
-
-        {/* LADO DERECHO: El Panel de Control (Ocupa 1 columna) */}
         <div className="lg:col-span-1">
-          <RhythmPanel />
+          {/* Le pasamos la moneda y la función para cambiarla al panel */}
+          <RhythmPanel selectedAsset={selectedAsset} setSelectedAsset={setSelectedAsset} />
         </div>
-
       </div>
-
-    </main>
+    </div>
   );
 }
