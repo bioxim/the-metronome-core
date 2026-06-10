@@ -8,16 +8,19 @@ import { PublicKey } from '@solana/web3.js';
 import { getAssociatedTokenAddress } from '@solana/spl-token';
 import { web3 } from '@coral-xyz/anchor';
 
-const USDC_MINT = new PublicKey("HGVevYYdPNSDg8ottoHgfefmtgH3bdmLozX9XdavwkiT");
+// 🪙 TUS TOKENS DE DEVNET
+const USDC_MINT = new PublicKey("3eFucVFPDNZryAKFykwUMkbvZevBUrdAZBgyT5REBjjc");
+// 👇 REEMPLAZÁ ESTO CON LA DIRECCIÓN DEL cbBTC QUE CREASTE EN LA TERMINAL
+const CBBTC_MINT = new PublicKey("AewQoMfpMPPxLx1937s7GdhVaMPYahnp9dSR12AbJBcb");
+
 // El ID oficial de Pyth Network para el par Crypto.SOL/USD en Devnet/Mainnet
 const PYTH_SOL_FEED_ID = "0xef0d8b6fda2ceba41da15d4095d1da392a0d2f8ed0c6c7bc0f4cfac8c280b56d";
-const PYTH_SOL_USD = new PublicKey("H6ARHf6YXhGYeQfUzQNGk6rDNnLBQKrenN712K4AQJEG");
 
 export default function OrderHistory() {
     const wallet = useAnchorWallet();
     const { connection } = useConnection();
 
-    // 👉 AGREGÁ ESTA LÍNEA ACÁ: Estado para el precio en vivo de Pyth
+    // 👉 Estado para el precio en vivo de Pyth
     const [liveSolPrice, setLiveSolPrice] = useState<string>('...');
 
     const [realPositions, setRealPositions] = useState<any[]>([]);
@@ -27,26 +30,48 @@ export default function OrderHistory() {
     // 🔥 ESTADO MÁGICO PARA LA DEMO
     const [demoModeTriggered, setDemoModeTriggered] = useState(false);
 
-    // Dinamizando la Billetera
+    // 🏦 DINAMIZANDO LA BILLETERA: Estados reales
     const [solBalance, setSolBalance] = useState<string>('0.00');
     const [usdcBalance, setUsdcBalance] = useState<string>('0.00');
+    const [cbBtcBalance, setCbBtcBalance] = useState<string>('0.0000'); // cbBTC suele tener más decimales
 
+    // 📡 ESCÁNER DE LA BLOCKCHAIN
     useEffect(() => {
         const fetchBalances = async () => {
             if (!wallet) return;
             try {
+                // 1. Buscamos SOL
                 const sol = await connection.getBalance(wallet.publicKey);
                 setSolBalance((sol / web3.LAMPORTS_PER_SOL).toFixed(2));
 
-                const usdcAccount = await getAssociatedTokenAddress(USDC_MINT, wallet.publicKey);
-                const usdc = await connection.getTokenAccountBalance(usdcAccount);
-                setUsdcBalance(usdc.value.uiAmountString || '0.00');
+                // 2. Buscamos USDC
+                try {
+                    const usdcAccount = await getAssociatedTokenAddress(USDC_MINT, wallet.publicKey);
+                    const usdc = await connection.getTokenAccountBalance(usdcAccount);
+                    setUsdcBalance(usdc.value.uiAmountString || '0.00');
+                } catch (e) {
+                    console.log("Sin cuenta USDC");
+                }
+
+                // 3. Buscamos cbBTC
+                try {
+                    // Solo busca cbBTC si pusiste una dirección válida arriba
+                    if (CBBTC_MINT.toBase58() !== "PEGÁ_ACÁ_TU_DIRECCION_DE_CBBTC") {
+                        const cbBtcAccount = await getAssociatedTokenAddress(CBBTC_MINT, wallet.publicKey);
+                        const cbBtc = await connection.getTokenAccountBalance(cbBtcAccount);
+                        setCbBtcBalance(cbBtc.value.uiAmountString || '0.0000');
+                    }
+                } catch (e) {
+                    console.log("Sin cuenta cbBTC");
+                }
+
             } catch (error) {
-                console.log("Aún no hay cuenta USDC o falló la lectura.");
+                console.error("Falló la lectura general de saldos.", error);
             }
         };
+
         fetchBalances();
-        const interval = setInterval(fetchBalances, 5000);
+        const interval = setInterval(fetchBalances, 5000); // Se actualiza cada 5 segundos
         return () => clearInterval(interval);
     }, [wallet, connection]);
 
@@ -59,7 +84,6 @@ export default function OrderHistory() {
 
                 if (data && data.parsed && data.parsed.length > 0) {
                     const priceData = data.parsed[0].price;
-                    // Pyth manda el precio crudo y el exponente, calculamos el precio real:
                     const actualPrice = (Number(priceData.price) * Math.pow(10, priceData.expo)).toFixed(2);
                     setLiveSolPrice(actualPrice);
                 }
@@ -68,16 +92,17 @@ export default function OrderHistory() {
             }
         };
 
-        fetchPythPrice(); // Primera llamada inmediata
-        const intervalId = setInterval(fetchPythPrice, 3000); // Latidos cada 3 segundos
+        fetchPythPrice();
+        const intervalId = setInterval(fetchPythPrice, 3000);
 
         return () => clearInterval(intervalId);
     }, []);
 
+    // 💼 LA LISTA QUE SE MUESTRA EN EL DASHBOARD
     const walletHoldings = [
         { asset: 'SOL', balance: solBalance, icon: '/sol-icon.png' },
         { asset: 'USDC', balance: usdcBalance, icon: '/usdc-icon.png' },
-        { asset: '$ONOME', balance: '1,200', icon: '/onome-icon.png' },
+        { asset: 'cbBTC', balance: cbBtcBalance, icon: '/bitcoin-icon.png' },
     ];
 
     // Buscando las bóvedas reales
@@ -116,7 +141,6 @@ export default function OrderHistory() {
                     };
                 });
 
-                // Si la blockchain está vacía, inyectamos una bóveda falsa para el video
                 if (formattedPositions.length === 0) {
                     formattedPositions = [{
                         id: 'DemoVaultPitchColosseum123',
@@ -148,7 +172,6 @@ export default function OrderHistory() {
 
     }, [wallet, connection, selectedPositionId]);
 
-    // Estadísticas Dinámicas
     const totalRhythms = realPositions.length;
     const tvlNum = realPositions.reduce((sum, pos) => sum + pos.depositedRaw, 0);
     const tvlFormatted = tvlNum.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -201,7 +224,6 @@ export default function OrderHistory() {
                 <div className="flex justify-end">
                     <div className="flex items-center gap-3 bg-bgSecondary border border-white/10 px-4 py-2 rounded-lg shadow-xl">
                         <div className="flex items-center gap-2">
-                            {/* Punto titilando estilo Matrix */}
                             <span className="relative flex h-3 w-3">
                                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-purple-400 opacity-75"></span>
                                 <span className="relative inline-flex rounded-full h-3 w-3 bg-purple-500"></span>
@@ -252,7 +274,7 @@ export default function OrderHistory() {
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 w-full">
-                {/* BILLETERA (Íconos corregidos estilo Phantom) */}
+                {/* BILLETERA */}
                 <div className="lg:col-span-1 flex flex-col gap-6">
                     <div className="bg-bgSecondary border border-white/10 rounded-xl overflow-hidden shadow-xl sticky top-6">
                         <div className="p-5 border-b border-white/10 bg-white/5 flex items-center justify-between">
@@ -267,7 +289,6 @@ export default function OrderHistory() {
                             {walletHoldings.map((token, index) => (
                                 <div key={token.asset} className={`p-4 flex items-center justify-between hover:bg-white/5 transition-colors rounded-lg ${index !== walletHoldings.length - 1 ? 'border-b border-white/5' : ''}`}>
                                     <div className="flex items-center gap-3">
-                                        {/* 👇 ÍCONOS CORREGIDOS: redondos, sin padding, borde a borde */}
                                         <div className="w-10 h-10 rounded-full overflow-hidden shrink-0 shadow-sm border border-white/10 bg-white/5">
                                             <img src={token.icon} alt={token.asset} className="w-full h-full object-cover" />
                                         </div>
