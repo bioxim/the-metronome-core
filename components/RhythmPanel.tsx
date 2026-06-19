@@ -25,6 +25,8 @@ export default function RhythmPanel({ selectedAsset, setSelectedAsset }: RhythmP
     const [buyAmount, setBuyAmount] = useState<number | ''>('');
     const [crescendoIncrease, setCrescendoIncrease] = useState<number | ''>('');
     const [takeProfitPercent, setTakeProfitPercent] = useState<number | ''>('');
+    const [takeProfitType, setTakeProfitType] = useState<'percentage' | 'price'>('percentage');
+    const [takeProfitValue, setTakeProfitValue] = useState<number | ''>('');
 
     const [availableBalance, setAvailableBalance] = useState<number>(0);
     const [isProcessing, setIsProcessing] = useState(false);
@@ -112,8 +114,18 @@ export default function RhythmPanel({ selectedAsset, setSelectedAsset }: RhythmP
 
             setButtonText("Confirm in Phantom... 🦊");
 
+            // Preparamos el número para que Rust y Pyth lo entiendan (Pyth usa 8 ceros para los decimales)
+            const isPriceBool = takeProfitType === 'price';
+            const takeProfitValueForRust = isPriceBool
+                ? new BN(numProfit * 100_000_000)  // Si es un precio (ej: 65400) le sumamos los ceros de Pyth
+                : new BN(numProfit);               // Si es porcentaje (ej: 15) lo mandamos tal cual
+
             const initInstruction = await program.methods.initializeRhythm(
-                rhythmId, new BN(numBudget), Math.floor(numDrop), Math.floor(numProfit)
+                rhythmId,
+                new BN(numBudget),
+                Math.floor(numDrop),
+                isPriceBool,              // 👈 Le mandamos el booleano
+                takeProfitValueForRust    // 👈 Le mandamos el valor formateado
             )
                 .accounts({
                     rhythmAccount: rhythmPDA,
@@ -248,10 +260,53 @@ export default function RhythmPanel({ selectedAsset, setSelectedAsset }: RhythmP
                     </p>
                 )}
 
-                {/* Estrategia de Venta */}
-                <div>
-                    <label className="text-[10px] text-textMuted font-bold uppercase block mb-2">Exit at ROI (%)</label>
-                    <input type="number" step="0.1" min="0" placeholder="e.g. 15.0" value={takeProfitPercent} onChange={(e) => setTakeProfitPercent(e.target.value ? Number(e.target.value) : '')} className="w-full bg-bgMain border border-white/5 rounded-lg p-3 text-lg font-mono text-green-400 placeholder:text-green-400/20 focus:border-green-400 focus:outline-none transition-colors" />
+                {/* Estrategia de Venta (Take Profit) */}
+                <div className="space-y-3">
+                    <div className="flex justify-between items-center">
+                        <label className="text-[10px] text-textMuted font-bold uppercase block">Take Profit Strategy</label>
+                        {/* NUEVO: Toggle de Salida */}
+                        <div className="flex bg-bgMain rounded-md p-0.5 border border-white/5">
+                            <button
+                                onClick={() => setTakeProfitType('percentage')}
+                                className={`px-2 py-1 text-[10px] font-bold rounded transition-all ${takeProfitType === 'percentage' ? 'bg-green-500/20 text-green-400' : 'text-textMuted hover:text-white'}`}
+                            >
+                                By ROI %
+                            </button>
+                            <button
+                                onClick={() => setTakeProfitType('price')}
+                                className={`px-2 py-1 text-[10px] font-bold rounded transition-all ${takeProfitType === 'price' ? 'bg-green-500/20 text-green-400' : 'text-textMuted hover:text-white'}`}
+                            >
+                                Target Price
+                            </button>
+                        </div>
+                    </div>
+
+                    <div className="relative">
+                        <input
+                            type="number" step="0.1" min="0"
+                            placeholder={takeProfitType === 'percentage' ? "e.g. 15.0" : (selectedAsset === 'BTC' ? "e.g. 73000" : "e.g. 185")}
+                            value={takeProfitValue}
+                            onChange={(e) => setTakeProfitValue(e.target.value ? Number(e.target.value) : '')}
+                            className="w-full bg-bgMain border border-white/5 rounded-lg p-3 text-lg font-mono text-green-400 placeholder:text-green-400/20 focus:border-green-400 focus:outline-none transition-colors"
+                        />
+                        {/* Etiqueta visual dentro del input */}
+                        <div className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-bold text-green-400/50 pointer-events-none">
+                            {takeProfitType === 'percentage' ? '%' : 'USDC'}
+                        </div>
+                    </div>
+
+                    {/* Botón Mágico de Sugerencia IA (VWAP) */}
+                    {takeProfitType === 'price' && (
+                        <div className="animate-in fade-in slide-in-from-top-1 duration-200">
+                            <button
+                                onClick={() => setTakeProfitValue(selectedAsset === 'BTC' ? 65400 : 152.5)}
+                                className="w-full flex items-center justify-center gap-2 bg-blue-500/10 hover:bg-blue-500/20 border border-blue-500/30 text-blue-400 py-2 rounded-md text-[11px] font-bold transition-all"
+                            >
+                                <Brain className="w-3.5 h-3.5" />
+                                AI Suggestion: Align with Monthly VWAP ({selectedAsset === 'BTC' ? '$65,400' : '$152.50'})
+                            </button>
+                        </div>
+                    )}
                 </div>
 
                 {/* Feedback Box Original Restaurado */}
