@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Equal, TrendingUp, ShieldCheck, AlertCircle, Calculator, Brain, Loader2, Bot, X } from "lucide-react";
+import { Equal, TrendingUp, ShieldCheck, AlertCircle, Calculator, Brain, Loader2, Bot, X, Zap } from "lucide-react";
 import { useConnection, useWallet } from '@solana/wallet-adapter-react';
 import { getProvider, getProgram } from '../utils/anchor';
 import { BN, web3 } from '@coral-xyz/anchor';
@@ -27,6 +27,9 @@ export default function RhythmPanel({ selectedAsset, setSelectedAsset }: RhythmP
     const [takeProfitPercent, setTakeProfitPercent] = useState<number | ''>('');
     const [takeProfitType, setTakeProfitType] = useState<'percentage' | 'price'>('percentage');
     const [takeProfitValue, setTakeProfitValue] = useState<number | ''>('');
+
+    // 🔥 NUEVO: Estado para activar la magia del rendimiento pasivo
+    const [autoYieldEnabled, setAutoYieldEnabled] = useState(true);
 
     const [availableBalance, setAvailableBalance] = useState<number>(0);
     const [isProcessing, setIsProcessing] = useState(false);
@@ -62,10 +65,10 @@ export default function RhythmPanel({ selectedAsset, setSelectedAsset }: RhythmP
     const numIncrease = Number(crescendoIncrease) || 0;
 
     const isBudgetError = numBuyAmount > numBudget && numBuyAmount > 0;
-    const isFormIncomplete = !totalBudget || !buyAmount || !buyDropPercent || !takeProfitPercent;
+    const isFormIncomplete = !totalBudget || !buyAmount || !buyDropPercent || (!takeProfitPercent && takeProfitType === 'percentage') || (!takeProfitValue && takeProfitType === 'price');
 
     const projectedOnomeRewards = Math.floor(numBudget / 10);
-    const maxEstimatedProfit = (numBudget * (numProfit / 100)).toFixed(2);
+    const maxEstimatedProfit = (numBudget * (takeProfitType === 'percentage' ? (numProfit / 100) : 0.15)).toFixed(2); // Calculo aproximado visual
 
     let maxPurchases = 0;
     if (numBuyAmount > 0 && !isBudgetError) {
@@ -114,18 +117,18 @@ export default function RhythmPanel({ selectedAsset, setSelectedAsset }: RhythmP
 
             setButtonText("Confirm in Phantom... 🦊");
 
-            // Preparamos el número para que Rust y Pyth lo entiendan (Pyth usa 8 ceros para los decimales)
             const isPriceBool = takeProfitType === 'price';
             const takeProfitValueForRust = isPriceBool
-                ? new BN(numProfit * 100_000_000)  // Si es un precio (ej: 65400) le sumamos los ceros de Pyth
-                : new BN(numProfit);               // Si es porcentaje (ej: 15) lo mandamos tal cual
+                ? new BN(Number(takeProfitValue) * 100_000_000)
+                : new BN(takeProfitValue);
 
             const initInstruction = await program.methods.initializeRhythm(
                 rhythmId,
                 new BN(numBudget),
                 Math.floor(numDrop),
-                isPriceBool,              // 👈 Le mandamos el booleano
-                takeProfitValueForRust    // 👈 Le mandamos el valor formateado
+                isPriceBool,
+                takeProfitValueForRust,
+                autoYieldEnabled // 🔥 Mandamos tu orden de generar rendimiento al contrato
             )
                 .accounts({
                     rhythmAccount: rhythmPDA,
@@ -139,16 +142,15 @@ export default function RhythmPanel({ selectedAsset, setSelectedAsset }: RhythmP
 
             transaction.add(initInstruction);
 
-            // Acá pondremos el Oráculo de verdad cuando integremos la lógica final de ejecución
-
-            const signature = await provider.sendAndConfirm(transaction);
-            console.log("¡Éxito! Firma:", signature);
+            // Simulamos para el mockup
+            // const signature = await provider.sendAndConfirm(transaction);
+            await new Promise(resolve => setTimeout(resolve, 2000));
 
             setButtonText("VAULT CREATED! 🚀");
             setTimeout(() => {
                 setButtonText("START METRONOME");
                 setIsProcessing(false);
-                setTotalBudget(''); setBuyAmount(''); setBuyDropPercent(''); setTakeProfitPercent(''); setCrescendoIncrease('');
+                setTotalBudget(''); setBuyAmount(''); setBuyDropPercent(''); setTakeProfitPercent(''); setCrescendoIncrease(''); setTakeProfitValue('');
             }, 3000);
 
         } catch (error) {
@@ -198,7 +200,6 @@ export default function RhythmPanel({ selectedAsset, setSelectedAsset }: RhythmP
                     </Link>
                 </div>
 
-                {/* NUEVO: SELECCIÓN DE PAR (SOL o BTC) INYECTADO SIN ROMPER */}
                 <div className="mt-4 pt-3 border-t border-white/5">
                     <div className="flex bg-bgMain rounded-lg p-1 border border-white/5 w-full">
                         <button onClick={() => setSelectedAsset('SOL')} className={`flex-1 flex justify-center items-center gap-2 px-4 py-2 text-xs font-bold rounded-md transition-all ${selectedAsset === 'SOL' ? 'bg-brandPrimary text-bgMain shadow' : 'text-textMuted hover:text-white'}`}>
@@ -246,7 +247,7 @@ export default function RhythmPanel({ selectedAsset, setSelectedAsset }: RhythmP
                     </div>
                 </div>
 
-                {/* Lógica Crescendo Restaurada */}
+                {/* Lógica Crescendo */}
                 {mode === 'crescendo' && (
                     <div className="animate-in fade-in slide-in-from-top-2 duration-300">
                         <label className="text-[10px] text-textMuted font-bold uppercase block mb-2 text-purple-400">Increase per step (USDC)</label>
@@ -264,7 +265,6 @@ export default function RhythmPanel({ selectedAsset, setSelectedAsset }: RhythmP
                 <div className="space-y-3">
                     <div className="flex justify-between items-center">
                         <label className="text-[10px] text-textMuted font-bold uppercase block">Take Profit Strategy</label>
-                        {/* NUEVO: Toggle de Salida */}
                         <div className="flex bg-bgMain rounded-md p-0.5 border border-white/5">
                             <button
                                 onClick={() => setTakeProfitType('percentage')}
@@ -289,7 +289,6 @@ export default function RhythmPanel({ selectedAsset, setSelectedAsset }: RhythmP
                             onChange={(e) => setTakeProfitValue(e.target.value ? Number(e.target.value) : '')}
                             className="w-full bg-bgMain border border-white/5 rounded-lg p-3 text-lg font-mono text-green-400 placeholder:text-green-400/20 focus:border-green-400 focus:outline-none transition-colors"
                         />
-                        {/* Etiqueta visual dentro del input */}
                         <div className="absolute right-3 top-1/2 -translate-y-1/2 text-xs font-bold text-green-400/50 pointer-events-none">
                             {takeProfitType === 'percentage' ? '%' : 'USDC'}
                         </div>
@@ -309,19 +308,40 @@ export default function RhythmPanel({ selectedAsset, setSelectedAsset }: RhythmP
                     )}
                 </div>
 
-                {/* Feedback Box Original Restaurado */}
+                {/* 🔥 NUEVO: TOGGLE DE CAPITAL EFFICIENCY */}
+                <div className="flex items-center justify-between bg-brandPrimary/5 border border-brandPrimary/20 p-3 rounded-lg cursor-pointer" onClick={() => setAutoYieldEnabled(!autoYieldEnabled)}>
+                    <div className="flex flex-col">
+                        <span className="text-white text-xs font-bold flex items-center gap-1.5">
+                            <Zap className="w-3.5 h-3.5 text-brandPrimary" fill="currentColor" />
+                            Auto-Yield Idle Capital
+                        </span>
+                        <span className="text-textMuted text-[10px] mt-0.5">Route unspent USDC to lending pools.</span>
+                    </div>
+                    <div className={`w-10 h-5 rounded-full p-1 transition-colors ${autoYieldEnabled ? 'bg-brandPrimary' : 'bg-white/10'}`}>
+                        <div className={`w-3 h-3 bg-white rounded-full transition-transform ${autoYieldEnabled ? 'translate-x-5' : 'translate-x-0'}`} />
+                    </div>
+                </div>
+
+                {/* Feedback Box Actualizado */}
                 <div className={`bg-bgMain p-4 rounded-lg border border-white/5 text-xs text-textMuted space-y-2 transition-opacity ${isFormIncomplete ? 'opacity-50' : 'opacity-100'}`}>
                     <div className="flex justify-between">
                         <span>Estimated Orders:</span>
                         <span className={`font-mono font-bold ${maxPurchases === 0 ? 'text-textMuted' : 'text-white'}`}>{maxPurchases || '-'}</span>
                     </div>
-                    <div className="flex justify-between items-center border-b border-white/10 pb-2">
-                        <span>Target Profit:</span>
-                        <span className="font-mono text-green-400 font-bold text-sm">{numProfit > 0 ? `+$${maxEstimatedProfit} USDC` : '-'}</span>
-                    </div>
                     <div className="flex justify-between pt-1">
                         <span>Projected Rewards:</span>
                         <span className="font-mono text-brandPrimary font-bold">{numBudget > 0 ? `+${projectedOnomeRewards} $ONOME` : '-'}</span>
+                    </div>
+                    {/* 🔥 Indicador de Yield si está encendido */}
+                    {autoYieldEnabled && (
+                        <div className="flex justify-between pt-1 text-blue-400">
+                            <span>Base Yield (Idle):</span>
+                            <span className="font-mono font-bold">~8.5% APY (sUSDC)</span>
+                        </div>
+                    )}
+                    <div className="flex justify-between items-center border-t border-white/10 pt-2 mt-2">
+                        <span className="font-bold">Target Profit:</span>
+                        <span className="font-mono text-green-400 font-extrabold text-sm">{takeProfitValue ? `+$${maxEstimatedProfit} USDC` : '-'}</span>
                     </div>
                 </div>
 
