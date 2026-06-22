@@ -4,15 +4,32 @@ import { useState, useEffect, useRef } from 'react';
 import { createChart, ColorType, CrosshairMode, IChartApi, ISeriesApi, CandlestickSeries, createSeriesMarkers } from 'lightweight-charts';
 import { Bot, X, Loader2 } from 'lucide-react';
 
+// 🔗 1. Definimos la estructura exacta que tendrán nuestras transacciones en la blockchain
+export interface TradeRecord {
+    time: number; // Timestamp en segundos
+    type: 'BUY' | 'SELL';
+    price: number;
+    amount: number;
+}
+
 const PYTH_SOL_FEED_ID = "0xef0d8b6fda2ceba41da15d4095d1da392a0d2f8ed0c6c7bc0f4cfac8c280b56d";
 const PYTH_BTC_FEED_ID = "0xe62df6c8b4a85fe1a67db44dc12de5db330f7ac66b72dc658afedf0f4a415b43";
 
-export default function RhythmChart({ selectedAsset = 'SOL' }: { selectedAsset?: string }) {
+// 🔗 2. Actualizamos las Props para recibir el historial real
+const EMPTY_TRADES: TradeRecord[] = [];
+
+export default function RhythmChart({
+    selectedAsset = 'SOL',
+    trades = EMPTY_TRADES // Por defecto está vacío hasta que conectemos el contrato
+}: {
+    selectedAsset?: string;
+    trades?: TradeRecord[];
+}) {
     const [showVideo, setShowVideo] = useState(false);
     const [isLoading, setIsLoading] = useState(true);
     const [livePrice, setLivePrice] = useState<string>('...');
 
-    // ⏱️ NUEVO: Estado para la temporalidad seleccionada (Por defecto 1 Hora)
+    // ⏱️ Estado para la temporalidad seleccionada (Por defecto 1 Hora)
     const [timeframe, setTimeframe] = useState<string>('1h');
 
     const chartContainerRef = useRef<HTMLDivElement>(null);
@@ -37,6 +54,8 @@ export default function RhythmChart({ selectedAsset = 'SOL' }: { selectedAsset?:
         if (!chartContainerRef.current) return;
         setIsLoading(true);
 
+        let isMounted = true;
+
         const chart = createChart(chartContainerRef.current, {
             layout: { background: { type: ColorType.Solid, color: 'transparent' }, textColor: '#9ca3af' },
             grid: { vertLines: { color: 'rgba(255, 255, 255, 0.05)' }, horzLines: { color: 'rgba(255, 255, 255, 0.05)' } },
@@ -60,6 +79,8 @@ export default function RhythmChart({ selectedAsset = 'SOL' }: { selectedAsset?:
                 const response = await fetch(`https://api.binance.com/api/v3/klines?symbol=${binanceSymbol}&interval=${timeframe}&limit=100`);
                 const data = await response.json();
 
+                if (!isMounted) return;
+
                 const formattedData = data.map((d: any) => ({
                     time: d[0] / 1000,
                     open: parseFloat(d[1]), high: parseFloat(d[2]), low: parseFloat(d[3]), close: parseFloat(d[4]),
@@ -67,16 +88,70 @@ export default function RhythmChart({ selectedAsset = 'SOL' }: { selectedAsset?:
 
                 candlestickSeries.setData(formattedData);
 
-                if (formattedData.length > 2) {
-                    const targetCandle = formattedData[formattedData.length - 2];
+                // 🔗 3. MODO DEMO O DATOS REALES
+                let displayTrades = trades;
+
+                // 🛠️ Si no vienen trades reales, inventamos dos en las últimas velas para probar la UI
+                if (displayTrades.length === 0 && formattedData.length > 3) {
+                    displayTrades = [
+                        {
+                            time: formattedData[formattedData.length - 3].time, // Compra hace 3 velas
+                            type: 'BUY',
+                            price: formattedData[formattedData.length - 3].close,
+                            amount: 0.15
+                        },
+                        {
+                            time: formattedData[formattedData.length - 2].time, // Venta hace 2 velas
+                            type: 'SELL',
+                            price: formattedData[formattedData.length - 2].close,
+                            amount: 0.05
+                        }
+                    ];
+                }
+
+                if (displayTrades.length > 0) {
                     const markersPrimitive = createSeriesMarkers(candlestickSeries);
-                    markersPrimitive.setMarkers([{
-                        time: targetCandle.time as any,
-                        position: 'belowBar',
-                        color: '#8b5cf6',
-                        shape: 'circle',
-                        text: 'Metronome: Auto-Buy Executed',
-                    }]);
+
+                    const realMarkers = displayTrades.map((trade) => ({
+                        time: trade.time as any,
+                        position: trade.type === 'BUY' ? 'belowBar' : 'aboveBar',
+                        color: trade.type === 'BUY' ? '#4ade80' : '#ef4444',
+                        shape: 'circle', // Usamos círculos para que quede más pro
+                        text: trade.type === 'BUY' ? 'B' : 'S',
+                        size: 1,
+                    }));
+
+                    markersPrimitive.setMarkers(realMarkers as any);
+
+                    // 🖱️ 4. La magia del Hover (Usando displayTrades)
+                    chart.subscribeCrosshairMove((param) => {
+                        const tooltip = document.getElementById('metronome-tooltip');
+
+                        if (!tooltip || !param.time || !param.point) {
+                            if (tooltip) tooltip.style.display = 'none';
+                            return;
+                        }
+
+                        // Buscamos en displayTrades en lugar de trades
+                        const activeTrade = displayTrades.find(t => t.time === param.time);
+
+                        if (activeTrade) {
+                            tooltip.style.display = 'block';
+                            tooltip.style.left = param.point.x + 15 + 'px';
+                            tooltip.style.top = param.point.y + 15 + 'px';
+
+                            const actionText = activeTrade.type === 'BUY' ? 'Buy' : 'Sell';
+                            const textColor = activeTrade.type === 'BUY' ? 'text-green-400' : 'text-red-400';
+
+                            tooltip.innerHTML = `
+                                <span class="${textColor} font-bold">${actionText}</span> 
+                                ${activeTrade.amount} ${selectedAsset} at 
+                                <span class="text-white font-mono">$${activeTrade.price.toLocaleString()}</span>
+                            `;
+                        } else {
+                            tooltip.style.display = 'none';
+                        }
+                    });
                 }
 
                 chart.timeScale().fitContent();
@@ -97,10 +172,11 @@ export default function RhythmChart({ selectedAsset = 'SOL' }: { selectedAsset?:
         window.addEventListener('resize', handleResize);
 
         return () => {
+            isMounted = false;
             window.removeEventListener('resize', handleResize);
             chart.remove(); // Limpia el canvas viejo al cambiar de moneda o de tiempo
         };
-    }, [selectedAsset, binanceSymbol, timeframe]); // 🔥 Re-ejecuta al cambiar la moneda u otra temporalidad
+    }, [selectedAsset, binanceSymbol, timeframe, trades]); // 🔥 Agregamos `trades` a las dependencias
 
     // Oráculo de Pyth para el feed de arriba en vivo
     useEffect(() => {
@@ -166,7 +242,7 @@ export default function RhythmChart({ selectedAsset = 'SOL' }: { selectedAsset?:
                 </div>
             </div>
 
-            {/* ⏱️ NUEVA BOTONERA DE TEMPORALIDADES (ESTILO TRADINGVIEW / HYPERLIQUID) */}
+            {/* ⏱️ BOTONERA DE TEMPORALIDADES */}
             <div className="absolute top-14 right-4 z-10 flex bg-black/40 backdrop-blur-md rounded-lg p-1 border border-white/5 gap-1">
                 {timeframes.map((tf) => (
                     <button
@@ -183,6 +259,12 @@ export default function RhythmChart({ selectedAsset = 'SOL' }: { selectedAsset?:
 
             {/* LIENZO DEL GRÁFICO (Canvas) */}
             <div ref={chartContainerRef} className="flex-1 mt-24 rounded-lg overflow-hidden border border-white/5 bg-bgSecondary/20 min-h-[340px]" />
+
+            {/* 🖱️ TOOLTIP FLOTANTE (Inyectado por el hover) */}
+            <div
+                id="metronome-tooltip"
+                className="absolute hidden z-50 pointer-events-none bg-[#0a0a0a]/95 border border-white/10 p-2.5 rounded-lg text-xs text-gray-400 shadow-2xl backdrop-blur-md transition-none"
+            />
         </div>
     );
 }

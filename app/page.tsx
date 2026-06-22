@@ -13,7 +13,9 @@ export default function DashboardPage() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         <div className="lg:col-span-2">
           {/* Le pasamos la moneda elegida al gráfico para que cambie de canal */}
-          <RhythmChart selectedAsset={selectedAsset} />
+          <RhythmChart
+            selectedAsset={selectedAsset}
+          />
         </div>
         <div className="lg:col-span-1">
           {/* Le pasamos la moneda y la función para cambiarla al panel */}
